@@ -56,7 +56,7 @@
             max-width: 500px;
         }
 
-        input[type="text"] {
+        input[type="text"], input[type="file"] {
             flex: 1;
             padding: 0.5rem 1rem;
             border: none;
@@ -73,6 +73,33 @@
             cursor: pointer;
             font-size: 0.9rem;
             transition: background 0.2s;
+        }
+
+        #fileContent {
+            padding: 1rem;
+            overflow: auto;
+            flex: 1;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        td, th {
+            border: 1px solid #e0e0e0;
+            padding: 8px 12px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
 
         #speechNotification, #speechStatus {
@@ -95,12 +122,14 @@
         <div class="header">
             <h1>Excel Search with Memory</h1>
             <div class="controls">
+                <input type="file" id="fileInput" accept=".xlsx,.xls">
                 <div class="search-box">
                     <input type="text" id="searchInput" placeholder="Type to search..." oninput="handleInput(event)">
                     <button onclick="search()">Search</button>
                 </div>
             </div>
         </div>
+        <div id="fileContent"></div>
     </div>
 
     <div id="speechNotification">Click anywhere to enable voice feedback</div>
@@ -112,7 +141,8 @@
         let speechQueue = [];
         let isProcessingQueue = false;
         let femaleVoice = null;
-        let firstInputAfterDelete = false; // Ensures first character is spoken but not repeated
+        let firstInputAfterDelete = false;
+        let fileData = [];
 
         const synth = window.speechSynthesis;
 
@@ -123,18 +153,17 @@
                 if (femaleVoice && femaleVoice.name.includes('Google')) {
                     resolve();
                 } else {
-                    setTimeout(() => resolve(loadVoices()), 100); // Retry if voice isn't loaded yet
+                    setTimeout(() => resolve(loadVoices()), 100);
                 }
             });
         }
 
         async function initializeSpeech() {
-            await loadVoices(); // Wait until Google Voice is ready
+            await loadVoices();
         }
 
         initializeSpeech();
 
-        // Pronunciation mapping
         const pronunciations = { 
             '1': 'one', '2': 'two', '3': 'three', '4': 'four', '5': 'five',
             '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine', '0': 'zero'
@@ -145,17 +174,16 @@
 
             const currentValue = event.target.value.toUpperCase();
             const newChars = currentValue.length > lastValue.length 
-                ? currentValue.slice(lastValue.length) // Typed characters
-                : ''; // Ignore if backspacing
+                ? currentValue.slice(lastValue.length)
+                : '';
 
             if (newChars.length > 0) {
                 if (firstInputAfterDelete) {
-                    queueSpeech(pronunciations[newChars[0]] || newChars[0]); // Speak first character
-                    firstInputAfterDelete = false; // Prevent duplicate speech
-                    newChars.slice(1).split('').forEach(char => queueSpeech(pronunciations[char] || char));
-                } else {
-                    newChars.split('').forEach(char => queueSpeech(pronunciations[char] || char));
+                    queueSpeech(pronunciations[newChars[0]] || newChars[0]);
+                    firstInputAfterDelete = false;
                 }
+
+                newChars.split('').forEach(char => queueSpeech(pronunciations[char] || char));
             }
 
             lastValue = currentValue;
@@ -167,7 +195,7 @@
             setTimeout(() => {
                 speechQueue.push(text);
                 if (!isProcessingQueue) speakNext();
-            }, 10); // Super-fast response
+            }, 10);
         }
 
         function speakNext() {
@@ -175,8 +203,8 @@
             isProcessingQueue = true;
 
             const utterance = new SpeechSynthesisUtterance(speechQueue.shift());
-            utterance.voice = femaleVoice; // Always use Google Female Voice
-            utterance.rate = 1.2; // Slightly slower for clarity
+            utterance.voice = femaleVoice;
+            utterance.rate = 1.2;
             utterance.volume = 1.0;
 
             utterance.onend = () => {
@@ -202,11 +230,11 @@
         }
 
         function clearSpeechQueue() {
-            synth.cancel(); // Stops all speech immediately
+            synth.cancel();
             speechQueue = [];
             isProcessingQueue = false;
-            lastValue = ''; // Reset last typed value
-            firstInputAfterDelete = true; // Ensures next character is spoken once
+            lastValue = '';
+            firstInputAfterDelete = true;
         }
 
         document.getElementById('searchInput').addEventListener('keydown', function(e) {
@@ -215,15 +243,33 @@
                 clearSpeechQueue();
                 queueSpeech('CLEAR');
                 e.preventDefault();
-            } else if (e.key === 'Backspace' && speechEnabled && this.value) {
-                clearSpeechQueue(); // Stop any previous speech
-                const deletedChar = this.value[this.value.length - 1]?.toUpperCase();
-                if (deletedChar) queueSpeech(`DELETED ${pronunciations[deletedChar] || deletedChar}`);
             }
         });
 
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                fileData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                let table = '<table>';
+                fileData.forEach(row => {
+                    table += '<tr>' + row.map(cell => `<td>${cell || ''}</td>`).join('') + '</tr>';
+                });
+                table += '</table>';
+
+                document.getElementById('fileContent').innerHTML = table;
+            };
+
+            reader.readAsArrayBuffer(file);
+        });
+
         window.addEventListener('load', () => {
-            synth.speak(new SpeechSynthesisUtterance('')); // Initialize speech
+            synth.speak(new SpeechSynthesisUtterance(''));
             document.getElementById('speechNotification').style.display = 'block';
             document.addEventListener('click', enableSpeech, { once: true });
         });
