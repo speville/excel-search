@@ -396,7 +396,7 @@
             } else if (e.key === 'Backspace' && speechEnabled && this.value) {
                 const deletedChar = this.value[this.value.length - 1].toUpperCase();
                 const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
-                queueSpeech(`DELETED ${deletedPronunciation}`);
+                queueSpeech(`REMOVED ${deletedPronunciation}`);
             } else if (e.key === 'Enter') {
                 search();
             }
