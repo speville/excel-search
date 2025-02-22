@@ -113,7 +113,7 @@
         let isProcessingQueue = false;
         const synth = window.speechSynthesis;
         let femaleVoice = null;
-        let allowImmediateSpeech = false; // Ensures typing after Delete works immediately
+        let firstCharAfterDelete = true; // Fixes first character missing after Delete
 
         // Load voices properly
         function loadVoices() {
@@ -137,16 +137,16 @@
             const currentValue = event.target.value.toUpperCase();
             const newChars = currentValue.length > lastValue.length 
                 ? currentValue.slice(lastValue.length) // Typed characters
-                : ''; // If deleted, ignore
+                : ''; // Ignore if backspacing
 
-            if (allowImmediateSpeech) {
-                // If delete was pressed, ensure first character is spoken instantly
-                allowImmediateSpeech = false;
-                queueSpeech(pronunciations[currentValue[0]] || currentValue[0]);
+            if (firstCharAfterDelete && newChars.length > 0) {
+                // Ensures first character is always spoken after Delete
+                queueSpeech(pronunciations[newChars[0]] || newChars[0]);
+                firstCharAfterDelete = false;
             }
 
-            for (const char of newChars) {
-                if (char) queueSpeech(pronunciations[char] || char);
+            for (const char of newChars.slice(1)) { // Process the rest normally
+                queueSpeech(pronunciations[char] || char);
             }
 
             lastValue = currentValue;
@@ -158,7 +158,7 @@
             setTimeout(() => {
                 speechQueue.push(text);
                 if (!isProcessingQueue) speakNext();
-            }, 10); // Fast response
+            }, 10); // Super-fast response
         }
 
         function speakNext() {
@@ -197,7 +197,7 @@
             speechQueue = [];
             isProcessingQueue = false;
             lastValue = ''; // Reset last typed value
-            allowImmediateSpeech = true; // Allows first character after delete to be spoken instantly
+            firstCharAfterDelete = true; // Ensures next character is always spoken
         }
 
         document.getElementById('searchInput').addEventListener('keydown', function(e) {
