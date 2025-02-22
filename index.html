@@ -266,7 +266,7 @@
                            placeholder="Type to search in Excel..."
                            oninput="handleInput(event)">
                     <button onclick="search()">Search</button>
-                    <button onclick="repeatSearch()">LET ME REPEAT</button> <!-- New Button -->
+                    <button onclick="repeatSearch()">LET ME REPEAT</button>
                 </div>
             </div>
         </div>
@@ -333,7 +333,6 @@
             'Z': 'Z'
         };
 
-        // Speech synthesis functions
         function speakNext() {
             if (speechQueue.length === 0 || isProcessingQueue) return;
 
@@ -424,7 +423,6 @@
             const searchInput = document.getElementById('searchInput');
             const searchQuery = searchInput.value;
             if (searchQuery) {
-                // Read numbers digit by digit
                 const digitByDigit = searchQuery.split('').map(char => pronunciations[char] || char).join(' ');
                 queueSpeech(digitByDigit);
             }
@@ -492,7 +490,7 @@
             const freq1 = 800;
             const freq2 = 600;
 
-            oscillator.frequency.setValueAtTime(freq1, time);
+oscillator.frequency.setValueAtTime(freq1, time);
             oscillator.frequency.setValueAtTime(freq2, time + 0.2);
             oscillator.frequency.setValueAtTime(freq1, time + 0.4);
             oscillator.frequency.setValueAtTime(freq2, time + 0.6);
@@ -542,6 +540,7 @@
             synth.cancel();
             speechQueue = [];
             isProcessingQueue = false;
+            firstInputAfterDelete = true;  // Added this line to fix the first character reading issue
 
             const searchInput = document.getElementById('searchInput');
             const searchQuery = searchInput.value.toLowerCase();
@@ -599,6 +598,7 @@
             }
 
             searchInput.value = '';
+            lastValue = '';  // Added this line to reset the last value state
         }
 
         document.getElementById('fileInput').addEventListener('change', function(e) {
@@ -669,3 +669,5 @@
     </script>
 </body>
 </html>
+
+
