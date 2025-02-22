@@ -324,7 +324,7 @@
         }
 
         // Add Enter key support
-        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+        document.getElementById('searchInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
                 search();
             }
