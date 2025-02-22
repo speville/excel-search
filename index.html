@@ -285,6 +285,7 @@
         let searchHistory = new Set();
         let audioContext = null;
         const yaySound = new Audio('yay.mp3');
+        const ohNoSound = new Audio('oh no.mp3');
         const synth = window.speechSynthesis;
         let speechEnabled = false;
         let lastValue = '';
@@ -556,7 +557,8 @@
                     playNewMatchSound();
                     showResult(`"${searchQuery}" - Match found!`, 'success');
                 } else {
-                    playErrorSound();
+                    ohNoSound.currentTime = 0;
+                    ohNoSound.play();
                     showResult(`"${searchQuery}" - No match found`, 'error');
                 }
             }
