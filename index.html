@@ -193,7 +193,6 @@
             max-width: 300px;
         }
 
-        /* Excel-like row headers */
         tr td:first-child {
             position: sticky;
             left: 0;
@@ -204,7 +203,6 @@
             width: 40px;
         }
 
-        /* Scrollbar styling */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -222,6 +220,35 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #a8a8a8;
         }
+
+        #speechNotification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            z-index: 1001;
+            cursor: pointer;
+            display: none;
+        }
+
+        #speechStatus {
+            position: fixed;
+            bottom: 1rem;
+            left: 1rem;
+            background: #28a745;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            z-index: 1000;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -234,7 +261,7 @@
                     <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
                 </div>
                 <div class="search-box">
-                    <input type="text" id="searchInput" placeholder="Type to search in Excel...">
+                    <input type="text" id="searchInput" placeholder="Type to search in Excel..." oninput="handleInput(event)">
                     <button onclick="search()">Search</button>
                 </div>
             </div>
@@ -243,11 +270,99 @@
         <div class="table-container" id="fileContent"></div>
     </div>
 
+    <div id="speechNotification">
+        Click anywhere to enable voice feedback for typing
+    </div>
+    <div id="speechStatus" onclick="toggleSpeech()">
+        Voice Feedback: ON
+    </div>
+
     <script>
         let fileData = [];
         let searchHistory = new Set();
         let audioContext = null;
         const yaySound = new Audio('yay.mp3');
+        const synth = window.speechSynthesis;
+        let speechEnabled = false;
+
+        // Call initSpeech when page loads
+        window.addEventListener('load', initSpeech);
+
+        function initSpeech() {
+            const utterance = new SpeechSynthesisUtterance('');
+            utterance.volume = 0;
+            synth.speak(utterance);
+            
+            const notification = document.getElementById('speechNotification');
+            notification.style.display = 'block';
+            
+            document.addEventListener('click', enableSpeech, { once: true });
+        }
+
+        function enableSpeech() {
+            speechEnabled = true;
+            document.getElementById('speechNotification').style.display = 'none';
+            const status = document.getElementById('speechStatus');
+            status.style.display = 'block';
+            status.textContent = 'Voice Feedback: ON';
+        }
+
+        function toggleSpeech() {
+            speechEnabled = !speechEnabled;
+            const status = document.getElementById('speechStatus');
+            status.textContent = `Voice Feedback: ${speechEnabled ? 'ON' : 'OFF'}`;
+        }
+
+        const pronunciations = {
+            '1': 'one',
+            '2': 'two',
+            '3': 'three',
+            '4': 'four',
+            '5': 'five',
+            '6': 'six',
+            '7': 'seven',
+            '8': 'eight',
+            '9': 'nine',
+            '0': 'zero',
+            'A': 'A',
+            'B': 'B',
+            'C': 'C',
+            'D': 'D',
+            'E': 'E',
+            'F': 'F',
+            'G': 'G',
+            'H': 'H',
+            'I': 'I',
+            'J': 'J',
+            'K': 'K',
+            'L': 'L',
+            'M': 'M',
+            'N': 'N',
+            'O': 'O',
+            'P': 'P',
+            'Q': 'Q',
+            'R': 'R',
+            'S': 'S',
+            'T': 'T',
+            'U': 'U',
+            'V': 'V',
+            'W': 'W',
+            'X': 'X',
+            'Y': 'Y',
+            'Z': 'Z'
+        };
+
+        function handleInput(event) {
+            if (!speechEnabled) return;
+            const char = event.target.value.slice(-1).toUpperCase();
+            if (char) {
+                const utterance = new SpeechSynthesisUtterance(pronunciations[char] || char);
+                utterance.rate = 1.2;
+                utterance.pitch = 1.1;
+                synth.cancel();
+                synth.speak(utterance);
+            }
+        }
 
         function initAudio() {
             if (!audioContext) {
@@ -272,7 +387,6 @@
             oscillator.start(audioContext.currentTime);
             oscillator.stop(audioContext.currentTime + 0.3);
 
-            // Add a second harsh tone
             setTimeout(() => {
                 const osc2 = audioContext.createOscillator();
                 const gain2 = audioContext.createGain();
@@ -301,7 +415,6 @@
             
             oscillator.type = 'square';
             
-            // Create alarm-like oscillating effect
             let time = audioContext.currentTime;
             const duration = 0.8;
             const freq1 = 800;
@@ -322,7 +435,7 @@
         }
 
         function playNewMatchSound() {
-            yaySound.currentTime = 0; // Reset to start
+            yaySound.currentTime = 0;
             yaySound.play();
         }
 
@@ -331,7 +444,6 @@
             resultDiv.textContent = message;
             resultDiv.className = className;
             
-            // Auto-hide after 3 seconds
             setTimeout(() => {
                 resultDiv.style.opacity = '0';
                 setTimeout(() => {
@@ -359,7 +471,6 @@
             const searchQuery = searchInput.value.toLowerCase();
             if (!searchQuery) return;
 
-            // Remove previous highlights
             document.querySelectorAll('.highlight').forEach(el => {
                 const parent = el.parentNode;
                 parent.textContent = parent.textContent;
@@ -371,16 +482,15 @@
             let found = false;
             let firstMatch = null;
 
-            // Search and highlight matches
             const rows = document.querySelectorAll('table tr');
             rows.forEach((row, rowIndex) => {
-                if (rowIndex === 0) return; // Skip header row
+                if (rowIndex === 0) return;
                 
                 const cells = row.querySelectorAll('td');
                 let rowHasMatch = false;
                 
                 cells.forEach((cell, cellIndex) => {
-                    if (cellIndex === 0) return; // Skip row number column
+                    if (cellIndex === 0) return;
                     
                     const cellText = cell.textContent;
                     if (cellText.toLowerCase().includes(searchQuery)) {
@@ -394,11 +504,9 @@
             });
 
             if (searchHistory.has(searchQuery)) {
-                // Repeated search
                 playRepeatedMatchSound();
                 showResult(`"${searchQuery}" - Repeated search! Found: ${found}`, 'repeat');
             } else {
-                // New search
                 searchHistory.add(searchQuery);
                 if (found) {
                     playNewMatchSound();
@@ -409,12 +517,10 @@
                 }
             }
 
-            // Scroll to first match
             if (firstMatch) {
                 firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
 
-            // Clear search input
             searchInput.value = '';
         }
 
@@ -430,10 +536,8 @@
                     const worksheet = workbook.Sheets[firstSheetName];
                     fileData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                     
-                    // Display the data in an Excel-like table
                     const table = document.createElement('table');
                     
-                    // Create header row with Excel-like column letters
                     const headerRow = document.createElement('tr');
                     const cornerCell = document.createElement('th');
                     headerRow.appendChild(cornerCell);
@@ -441,29 +545,25 @@
                     const maxCols = Math.max(...fileData.map(row => row.length));
                     for (let i = 0; i < maxCols; i++) {
                         const th = document.createElement('th');
-                        th.textContent = String.fromCharCode(65 + i); // A, B, C, etc.
+                        th.textContent = String.fromCharCode(65 + i);
                         headerRow.appendChild(th);
                     }
                     table.appendChild(headerRow);
                     
-                    // Create data rows with row numbers
                     fileData.forEach((row, rowIndex) => {
                         const tr = document.createElement('tr');
                         tr.setAttribute('data-row', rowIndex + 1);
                         
-                        // Add row number
                         const rowNum = document.createElement('td');
                         rowNum.textContent = rowIndex + 1;
                         tr.appendChild(rowNum);
                         
-                        // Add data cells
                         row.forEach(cell => {
                             const td = document.createElement('td');
-                            td.textContent = cell || '';  // Handle null/undefined
+                            td.textContent = cell || '';
                             tr.appendChild(td);
                         });
                         
-                        // Fill empty cells
                         for (let i = row.length; i < maxCols; i++) {
                             const td = document.createElement('td');
                             tr.appendChild(td);
@@ -474,7 +574,7 @@
                     
                     document.getElementById('fileContent').innerHTML = '';
                     document.getElementById('fileContent').appendChild(table);
-                    searchHistory.clear(); // Clear search history for new file
+                    searchHistory.clear();
                 } catch (error) {
                     showResult('Error reading Excel file: ' + error.message, 'error');
                     playErrorSound();
@@ -484,7 +584,6 @@
             reader.readAsArrayBuffer(file);
         });
 
-        // Add Enter key support for search
         document.getElementById('searchInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 search();
