@@ -351,10 +351,45 @@
             synth.speak(utterance);
         }
 
+        function playCharacterSound(char) {
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            // Modern frequencies for different character types
+            let baseFreq = 440; // A4 note
+            if (/[0-9]/.test(char)) {
+                baseFreq = 440 + (char * 20); // Numbers increase in pitch
+            } else if (/[A-Z]/.test(char)) {
+                baseFreq = 440 + ((char.charCodeAt(0) - 65) * 15); // Letters spread across scale
+            }
+            
+            oscillator.type = 'sine'; // Smoother sine wave
+            oscillator.frequency.value = baseFreq;
+            
+            // Short, clean envelope
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
         function queueSpeech(text) {
             if (!speechEnabled) return;
-            speechQueue.push(text);
-            if (!isProcessingQueue) speakNext();
+            
+            // Play modern sound for single characters
+            if (text.length === 1) {
+                playCharacterSound(text);
+            } else {
+                // Use speech synthesis for words (like "DELETED" and "CLEARED")
+                speechQueue.push(text);
+                if (!isProcessingQueue) speakNext();
+            }
         }
 
         function handleInput(event) {
