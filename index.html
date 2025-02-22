@@ -512,6 +512,11 @@
         }
 
         function search() {
+            // Clear any ongoing speech and the queue
+            synth.cancel();
+            speechQueue = [];
+            isProcessingQueue = false;
+
             const searchInput = document.getElementById('searchInput');
             const searchQuery = searchInput.value.toLowerCase();
             if (!searchQuery) return;
