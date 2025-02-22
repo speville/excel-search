@@ -340,14 +340,14 @@
             const text = speechQueue.shift();
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.voice = synth.getVoices().find(voice => voice.lang === 'en-US' && voice.name.includes('Google')) || synth.getVoices()[0];
-            utterance.rate = 2.0;
+            utterance.rate = 1.0;
             utterance.pitch = 1.0;
             utterance.volume = 0.9;
 
             utterance.onend = () => {
                 isProcessingQueue = false;
                 if (speechQueue.length > 0) {
-                    setTimeout(() => speakNext(), 50);
+                    setTimeout(() => speakNext(), 15);
                 }
             };
 
