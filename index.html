@@ -424,7 +424,9 @@
             const searchInput = document.getElementById('searchInput');
             const searchQuery = searchInput.value;
             if (searchQuery) {
-                queueSpeech(searchQuery);
+                // Read numbers digit by digit
+                const digitByDigit = searchQuery.split('').map(char => pronunciations[char] || char).join(' ');
+                queueSpeech(digitByDigit);
             }
         }
 
