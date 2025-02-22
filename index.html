@@ -113,6 +113,7 @@
         let isProcessingQueue = false;
         const synth = window.speechSynthesis;
         let femaleVoice = null;
+        let firstCharSpoken = false; // Ensures the first character is spoken
 
         // Load voices properly
         function loadVoices() {
@@ -136,8 +137,14 @@
             const currentValue = event.target.value.toUpperCase();
             const newChars = currentValue.slice(lastValue.length); // Get only newly added characters
 
-            for (const char of newChars) {
-                if (char) queueSpeech(pronunciations[char] || char);
+            if (!firstCharSpoken && newChars.length > 0) {
+                // Ensure first character typed is ALWAYS spoken
+                queueSpeech(pronunciations[newChars[0]] || newChars[0]);
+                firstCharSpoken = true;
+            }
+
+            for (const char of newChars.slice(1)) { // Speak rest of characters normally
+                queueSpeech(pronunciations[char] || char);
             }
 
             lastValue = currentValue;
@@ -185,6 +192,7 @@
             synth.cancel(); // Stops all speech immediately
             speechQueue = [];
             isProcessingQueue = false;
+            firstCharSpoken = false; // Reset for new typing
         }
 
         document.getElementById('searchInput').addEventListener('keydown', function(e) {
