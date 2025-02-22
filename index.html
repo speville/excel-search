@@ -111,19 +111,28 @@
         let lastValue = '';
         let speechQueue = [];
         let isProcessingQueue = false;
-        const synth = window.speechSynthesis;
         let femaleVoice = null;
         let firstCharAfterDelete = false; // Ensures first character isn't repeated after delete
 
-        // Load voices properly
+        const synth = window.speechSynthesis;
+
         function loadVoices() {
-            let voices = synth.getVoices();
-            femaleVoice = voices.find(voice => voice.lang === 'en-US' && voice.name.includes('Google')) || voices[0];
+            return new Promise((resolve) => {
+                let voices = synth.getVoices();
+                femaleVoice = voices.find(voice => voice.lang === 'en-US' && voice.name.includes('Google')) || voices[0];
+                if (femaleVoice && femaleVoice.name.includes('Google')) {
+                    resolve();
+                } else {
+                    setTimeout(() => resolve(loadVoices()), 100); // Retry if voice isn't loaded yet
+                }
+            });
         }
 
-        // Ensure voices are loaded (delayed load in some browsers)
-        synth.onvoiceschanged = loadVoices;
-        loadVoices();
+        async function initializeSpeech() {
+            await loadVoices(); // Wait until Google Voice is ready
+        }
+
+        initializeSpeech();
 
         // Pronunciation mapping
         const pronunciations = { 
@@ -156,7 +165,7 @@
         }
 
         function queueSpeech(text) {
-            if (!speechEnabled) return;
+            if (!speechEnabled || !femaleVoice) return;
 
             setTimeout(() => {
                 speechQueue.push(text);
@@ -169,7 +178,7 @@
             isProcessingQueue = true;
 
             const utterance = new SpeechSynthesisUtterance(speechQueue.shift());
-            utterance.voice = femaleVoice; // Keep the female voice
+            utterance.voice = femaleVoice; // Always use Google Female Voice
             utterance.rate = 1.2; // Slightly slower for clarity
             utterance.volume = 1.0;
 
