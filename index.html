@@ -370,9 +370,14 @@
             lastValue = currentValue;
         }
 
-        // Add backspace detection
+        // Add backspace and delete key detection
         document.getElementById('searchInput').addEventListener('keydown', function(e) {
-            if (e.key === 'Backspace' && speechEnabled && this.value) {
+            if (e.key === 'Delete' && speechEnabled) {
+                // Clear the search input
+                this.value = '';
+                queueSpeech('CLEARED');
+                e.preventDefault(); // Prevent default delete behavior
+            } else if (e.key === 'Backspace' && speechEnabled && this.value) {
                 const deletedChar = this.value[this.value.length - 1].toUpperCase();
                 const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
                 queueSpeech(`DELETED ${deletedPronunciation}`);
