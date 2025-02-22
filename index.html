@@ -285,7 +285,7 @@
         let searchHistory = new Set();
         let audioContext = null;
         const yaySound = new Audio('yay.mp3');
-        const ohNoSound = new Audio('oh_no.mp3');
+        const ohNoSound = new Audio('oh no.mp3');
         const synth = window.speechSynthesis;
         let speechEnabled = false;
         let lastValue = '';
@@ -414,7 +414,7 @@
             if (e.key === 'Delete' && speechEnabled) {
                 // Clear the search input
                 this.value = '';
-                queueSpeech('CLEARED');
+                queueSpeech('CLEAR');
                 e.preventDefault(); // Prevent default delete behavior
             } else if (e.key === 'Backspace' && speechEnabled && this.value) {
                 const deletedChar = this.value[this.value.length - 1].toUpperCase();
