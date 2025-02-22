@@ -6,22 +6,216 @@
     <title>Excel Search with Memory</title>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
-        body { background: #f0f2f5; min-height: 100vh; display: flex; flex-direction: column; }
-        .container { display: flex; flex-direction: column; height: 100vh; background: white; }
-        .header { background: #217346; color: white; padding: 1rem 2rem; display: flex; align-items: center; gap: 2rem; }
-        h1 { font-size: 1.5rem; font-weight: 500; }
-        .controls { display: flex; align-items: center; gap: 1rem; flex: 1; }
-        .search-box { flex: 1; display: flex; gap: 0.5rem; max-width: 500px; }
-        input[type="text"] { flex: 1; padding: 0.5rem 1rem; border: none; border-radius: 4px; font-size: 0.9rem; }
-        button { padding: 0.5rem 1rem; background: #185a34; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
-        #fileContent { padding: 1rem; overflow: auto; flex: 1; }
-        table { width: 100%; border-collapse: collapse; background: white; }
-        td, th { border: 1px solid #e0e0e0; padding: 8px 12px; text-align: left; font-size: 0.9rem; }
-        th { background: #f8f9fa; font-weight: 600; position: sticky; top: 0; z-index: 10; }
-        #speechNotification, #speechStatus { position: fixed; background: rgba(0, 0, 0, 0.8); color: white; padding: 10px; border-radius: 4px; cursor: pointer; z-index: 1000; display: none; }
-        #speechNotification { top: 50%; left: 50%; transform: translate(-50%, -50%); }
-        #speechStatus { bottom: 1rem; left: 1rem; background: #28a745; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        body {
+            background: #f0f2f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: white;
+        }
+
+        .header {
+            background: #217346;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+        }
+
+        input[type="file"] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-button {
+            background: #185a34;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            border: none;
+            font-size: 0.9rem;
+        }
+
+        .file-button:hover {
+            background: #134428;
+        }
+
+        .search-box {
+            flex: 1;
+            display: flex;
+            gap: 0.5rem;
+            max-width: 500px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            background: #185a34;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #134428;
+        }
+
+        #result {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .success { 
+            background: #28a745;
+            color: white;
+            box-shadow: 0 2px 8px rgba(40,167,69,0.2);
+        }
+        .error { 
+            background: #dc3545;
+            color: white;
+            box-shadow: 0 2px 8px rgba(220,53,69,0.2);
+        }
+        .repeat { 
+            background: #007bff;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,123,255,0.2);
+        }
+
+        .table-container {
+            flex: 1;
+            overflow: auto;
+            padding: 1rem;
+            scroll-behavior: smooth;
+        }
+
+        .highlight {
+            background-color: #ffeb3b;
+            padding: 2px 0;
+        }
+
+        .row-highlight {
+            background-color: #fff9c4 !important;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        td, th {
+            border: 1px solid #e0e0e0;
+            padding: 8px 12px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        td {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 300px;
+        }
+
+        tr td:first-child {
+            position: sticky;
+            left: 0;
+            background: #f8f9fa;
+            font-weight: 500;
+            color: #666;
+            text-align: center;
+            width: 40px;
+        }
+
+        #speechStatus {
+            position: fixed;
+            bottom: 1rem;
+            left: 1rem;
+            background: #28a745;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            z-index: 1000;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -29,116 +223,25 @@
         <div class="header">
             <h1>Excel Search with Memory</h1>
             <div class="controls">
-                <input type="file" id="fileInput" accept=".xlsx,.xls">
+                <div class="file-input-wrapper">
+                    <button class="file-button">Choose Excel File</button>
+                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+                </div>
                 <div class="search-box">
-                    <input type="text" id="searchInput" placeholder="Type to search..." oninput="handleInput(event)">
+                    <input type="text" 
+                           id="searchInput" 
+                           placeholder="Type to search in Excel..." 
+                           oninput="handleInput(event)">
                     <button onclick="search()">Search</button>
                 </div>
             </div>
         </div>
-        <div id="fileContent"></div>
+        <div id="result"></div>
+        <div class="table-container" id="fileContent"></div>
     </div>
 
-    <div id="speechNotification">Click anywhere to enable voice feedback</div>
-    <div id="speechStatus" onclick="toggleSpeech()">Voice Feedback: ON</div>
-
-    <script>
-        let speechEnabled = false;
-        let lastValue = '';
-        let speechQueue = [];
-        let isProcessingQueue = false;
-        let femaleVoice = null;
-        let firstInputAfterDelete = false;
-        let fileData = [];
-        let searchHistory = new Set();
-        const yaySound = new Audio('yay.mp3');
-        const ohNoSound = new Audio('oh_no.mp3');
-        const synth = window.speechSynthesis;
-
-        function loadVoices() {
-            return new Promise((resolve) => {
-                let voices = synth.getVoices();
-                femaleVoice = voices.find(voice => voice.lang === 'en-US' && voice.name.includes('Google')) || voices[0];
-                if (femaleVoice) resolve();
-                else setTimeout(() => resolve(loadVoices()), 100);
-            });
-        }
-        async function initializeSpeech() { await loadVoices(); }
-        initializeSpeech();
-
-        const pronunciations = { '1': 'one', '2': 'two', '3': 'three', '4': 'four', '5': 'five',
-            '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine', '0': 'zero' };
-
-        function handleInput(event) {
-            if (!speechEnabled) return;
-            const currentValue = event.target.value.toUpperCase();
-            const newChars = currentValue.length > lastValue.length 
-                ? currentValue.slice(lastValue.length)
-                : '';
-            if (newChars.length > 0) {
-                if (firstInputAfterDelete) firstInputAfterDelete = false;
-                newChars.split('').forEach(char => queueSpeech(pronunciations[char] || char));
-            }
-            lastValue = currentValue;
-        }
-
-        function queueSpeech(text) {
-            if (!speechEnabled || !femaleVoice) return;
-            setTimeout(() => {
-                speechQueue.push(text);
-                if (!isProcessingQueue) speakNext();
-            }, 10);
-        }
-
-        function speakNext() {
-            if (speechQueue.length === 0 || isProcessingQueue) return;
-            isProcessingQueue = true;
-            const utterance = new SpeechSynthesisUtterance(speechQueue.shift());
-            utterance.voice = femaleVoice;
-            utterance.rate = 1.2;
-            utterance.volume = 1.0;
-            utterance.onend = () => {
-                isProcessingQueue = false;
-                if (speechQueue.length > 0) speakNext();
-            };
-            synth.speak(utterance);
-        }
-
-        function enableSpeech() {
-            speechEnabled = true;
-            document.getElementById('speechNotification').style.display = 'none';
-            document.getElementById('speechStatus').style.display = 'block';
-        }
-
-        function toggleSpeech() {
-            speechEnabled = !speechEnabled;
-            synth.cancel();
-            speechQueue = [];
-            isProcessingQueue = false;
-            document.getElementById('speechStatus').textContent = `Voice Feedback: ${speechEnabled ? 'ON' : 'OFF'}`;
-        }
-
-        function clearSpeechQueue() {
-            synth.cancel();
-            speechQueue = [];
-            isProcessingQueue = false;
-            lastValue = '';
-            firstInputAfterDelete = true;
-        }
-
-        document.getElementById('searchInput').addEventListener('keydown', function(e) {
-            if (e.key === 'Delete' && speechEnabled) {
-                this.value = '';
-                clearSpeechQueue();
-                queueSpeech('CLEAR');
-                e.preventDefault();
-            } else if (e.key === 'Backspace' && speechEnabled && this.value) {
-                const deletedChar = this.value[this.value.length - 1]?.toUpperCase();
-                if (deletedChar) queueSpeech(`DELETED ${pronunciations[deletedChar] || deletedChar}`);
-            } else if (e.key === 'Enter') {
-                search();
-            }
-        });
-    </script>
+    <div id="speechStatus" onclick="toggleSpeech()">
+        Voice Feedback: ON
+    </div>
 </body>
 </html>
