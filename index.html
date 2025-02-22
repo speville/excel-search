@@ -338,8 +338,11 @@
             isProcessingQueue = true;
             const text = speechQueue.shift();
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.rate = 3.0;  // Very fast speech
-            utterance.pitch = 1.1;
+            // Use a more modern-sounding voice configuration
+            utterance.voice = synth.getVoices().find(voice => voice.lang === 'en-US' && voice.name.includes('Google')) || synth.getVoices()[0];
+            utterance.rate = 1.5;  // Moderate speed for clarity
+            utterance.pitch = 1.0;  // Natural pitch
+            utterance.volume = 0.9; // Slightly reduced volume
             
             utterance.onend = () => {
                 isProcessingQueue = false;
