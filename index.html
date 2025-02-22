@@ -113,7 +113,7 @@
         let isProcessingQueue = false;
         const synth = window.speechSynthesis;
         let femaleVoice = null;
-        let firstCharSpoken = false; // Ensures the first character is spoken
+        let allowImmediateSpeech = false; // Ensures typing after Delete works immediately
 
         // Load voices properly
         function loadVoices() {
@@ -135,16 +135,18 @@
             if (!speechEnabled) return;
 
             const currentValue = event.target.value.toUpperCase();
-            const newChars = currentValue.slice(lastValue.length); // Get only newly added characters
+            const newChars = currentValue.length > lastValue.length 
+                ? currentValue.slice(lastValue.length) // Typed characters
+                : ''; // If deleted, ignore
 
-            if (!firstCharSpoken && newChars.length > 0) {
-                // Ensure first character typed is ALWAYS spoken
-                queueSpeech(pronunciations[newChars[0]] || newChars[0]);
-                firstCharSpoken = true;
+            if (allowImmediateSpeech) {
+                // If delete was pressed, ensure first character is spoken instantly
+                allowImmediateSpeech = false;
+                queueSpeech(pronunciations[currentValue[0]] || currentValue[0]);
             }
 
-            for (const char of newChars.slice(1)) { // Speak rest of characters normally
-                queueSpeech(pronunciations[char] || char);
+            for (const char of newChars) {
+                if (char) queueSpeech(pronunciations[char] || char);
             }
 
             lastValue = currentValue;
@@ -153,8 +155,10 @@
         function queueSpeech(text) {
             if (!speechEnabled) return;
 
-            speechQueue.push(text);
-            if (!isProcessingQueue) speakNext();
+            setTimeout(() => {
+                speechQueue.push(text);
+                if (!isProcessingQueue) speakNext();
+            }, 10); // Fast response
         }
 
         function speakNext() {
@@ -192,7 +196,8 @@
             synth.cancel(); // Stops all speech immediately
             speechQueue = [];
             isProcessingQueue = false;
-            firstCharSpoken = false; // Reset for new typing
+            lastValue = ''; // Reset last typed value
+            allowImmediateSpeech = true; // Allows first character after delete to be spoken instantly
         }
 
         document.getElementById('searchInput').addEventListener('keydown', function(e) {
@@ -203,8 +208,8 @@
                 e.preventDefault();
             } else if (e.key === 'Backspace' && speechEnabled && this.value) {
                 clearSpeechQueue(); // Stop any previous speech
-                const deletedChar = this.value[this.value.length - 1].toUpperCase();
-                queueSpeech(`DELETED ${pronunciations[deletedChar] || deletedChar}`);
+                const deletedChar = this.value[this.value.length - 1]?.toUpperCase();
+                if (deletedChar) queueSpeech(`DELETED ${pronunciations[deletedChar] || deletedChar}`);
             }
         });
 
