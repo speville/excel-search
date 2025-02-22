@@ -365,16 +365,15 @@
         function handleInput(event) {
             if (!speechEnabled) return;
             const currentValue = event.target.value.toUpperCase();
-
-            if (currentValue.length <= lastValue.length) {
-                // Input was replaced or deleted
-                clearSpeechQueue();
-                queueSpeech('CLEARED');
-            }
-
-            const newChars = currentValue.slice(Math.max(0, lastValue.length - currentValue.length));
+            const newChars = currentValue.length > lastValue.length
+                ? currentValue.slice(lastValue.length)
+                : '';
 
             if (newChars.length > 0) {
+                if (firstInputAfterDelete) {
+                    firstInputAfterDelete = false;
+                }
+
                 newChars.split('').forEach(char => queueSpeech(pronunciations[char] || char));
             }
 
