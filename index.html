@@ -288,6 +288,8 @@
         const synth = window.speechSynthesis;
         let speechEnabled = false;
         let lastValue = '';
+        let speechQueue = [];
+        let isProcessingQueue = false;
 
         const pronunciations = {
             '1': 'one',
@@ -328,31 +330,54 @@
             'Z': 'Z'
         };
 
-        window.addEventListener('load', initSpeech);
-
-        function initSpeech() {
-            const utterance = new SpeechSynthesisUtterance('');
-            utterance.volume = 0;
-            synth.speak(utterance);
+        // Speech synthesis functions
+        function speakNext() {
+            if (speechQueue.length === 0 || isProcessingQueue) return;
             
-            const notification = document.getElementById('speechNotification');
-            notification.style.display = 'block';
+            isProcessingQueue = true;
+            const text = speechQueue.shift();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.rate = 3.0;  // Very fast speech
+            utterance.pitch = 1.1;
             
-            document.addEventListener('click', enableSpeech, { once: true });
-
-            // Add input event listener for backspace detection
-            document.getElementById('searchInput').addEventListener('keydown', function(e) {
-                if (e.key === 'Backspace' && speechEnabled && this.value) {
-                    const deletedChar = this.value[this.value.length - 1].toUpperCase();
-                    const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
-                    const utterance = new SpeechSynthesisUtterance(`DELETED ${deletedPronunciation}`);
-                    utterance.rate = 1.2;
-                    utterance.pitch = 1.1;
-                    synth.cancel();
-                    synth.speak(utterance);
+            utterance.onend = () => {
+                isProcessingQueue = false;
+                if (speechQueue.length > 0) {
+                    setTimeout(() => speakNext(), 50); // Small delay between utterances
                 }
-            });
+            };
+
+            synth.speak(utterance);
         }
+
+        function queueSpeech(text) {
+            if (!speechEnabled) return;
+            speechQueue.push(text);
+            if (!isProcessingQueue) speakNext();
+        }
+
+        function handleInput(event) {
+            if (!speechEnabled) return;
+            const currentValue = event.target.value;
+            
+            if (currentValue.length >= lastValue.length) {
+                const char = currentValue.slice(-1).toUpperCase();
+                if (char) {
+                    queueSpeech(pronunciations[char] || char);
+                }
+            }
+            
+            lastValue = currentValue;
+        }
+
+        // Add backspace detection
+        document.getElementById('searchInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' && speechEnabled && this.value) {
+                const deletedChar = this.value[this.value.length - 1].toUpperCase();
+                const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
+                queueSpeech(`DELETED ${deletedPronunciation}`);
+            }
+        });
 
         function enableSpeech() {
             speechEnabled = true;
@@ -364,28 +389,19 @@
 
         function toggleSpeech() {
             speechEnabled = !speechEnabled;
+            synth.cancel();
+            speechQueue = [];
+            isProcessingQueue = false;
             const status = document.getElementById('speechStatus');
             status.textContent = `Voice Feedback: ${speechEnabled ? 'ON' : 'OFF'}`;
         }
 
-        function handleInput(event) {
-            if (!speechEnabled) return;
-            const currentValue = event.target.value;
-            
-            // Handle regular input (not backspace)
-            if (currentValue.length >= lastValue.length) {
-                const char = currentValue.slice(-1).toUpperCase();
-                if (char) {
-                    const utterance = new SpeechSynthesisUtterance(pronunciations[char] || char);
-                    utterance.rate = 1.2;
-                    utterance.pitch = 1.1;
-                    synth.cancel();
-                    synth.speak(utterance);
-                }
-            }
-            
-            lastValue = currentValue;
-        }
+        window.addEventListener('load', () => {
+            // Initialize speech
+            synth.speak(new SpeechSynthesisUtterance(''));
+            document.getElementById('speechNotification').style.display = 'block';
+            document.addEventListener('click', enableSpeech, { once: true });
+        });
 
         function initAudio() {
             if (!audioContext) {
