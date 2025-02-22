@@ -112,11 +112,17 @@
         let speechQueue = [];
         let isProcessingQueue = false;
         const synth = window.speechSynthesis;
+        let femaleVoice = null;
 
-        // Female voice selection
-        function getFemaleVoice() {
-            return synth.getVoices().find(voice => voice.lang === 'en-US' && voice.name.includes('Google')) || synth.getVoices()[0];
+        // Load voices properly
+        function loadVoices() {
+            let voices = synth.getVoices();
+            femaleVoice = voices.find(voice => voice.lang === 'en-US' && voice.name.includes('Google')) || voices[0];
         }
+
+        // Ensure voices are loaded (delayed load in some browsers)
+        synth.onvoiceschanged = loadVoices;
+        loadVoices();
 
         // Pronunciation mapping
         const pronunciations = { 
@@ -140,10 +146,8 @@
         function queueSpeech(text) {
             if (!speechEnabled) return;
 
-            setTimeout(() => {
-                speechQueue.push(text);
-                if (!isProcessingQueue) speakNext();
-            }, 10); // Faster response, avoids lag
+            speechQueue.push(text);
+            if (!isProcessingQueue) speakNext();
         }
 
         function speakNext() {
@@ -151,13 +155,13 @@
             isProcessingQueue = true;
 
             const utterance = new SpeechSynthesisUtterance(speechQueue.shift());
-            utterance.voice = getFemaleVoice(); // Keep the female voice
+            utterance.voice = femaleVoice; // Keep the female voice
             utterance.rate = 1.2; // Slightly slower for clarity
             utterance.volume = 1.0;
 
             utterance.onend = () => {
                 isProcessingQueue = false;
-                if (speechQueue.length > 0) setTimeout(speakNext, 10); // Very short delay for fluid speech
+                if (speechQueue.length > 0) speakNext();
             };
 
             synth.speak(utterance);
@@ -197,7 +201,7 @@
         });
 
         window.addEventListener('load', () => {
-            synth.speak(new SpeechSynthesisUtterance(''));
+            synth.speak(new SpeechSynthesisUtterance('')); // Initialize speech
             document.getElementById('speechNotification').style.display = 'block';
             document.addEventListener('click', enableSpeech, { once: true });
         });
