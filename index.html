@@ -113,7 +113,7 @@
         let isProcessingQueue = false;
         const synth = window.speechSynthesis;
         let femaleVoice = null;
-        let firstCharAfterDelete = true; // Fixes first character missing after Delete
+        let firstCharAfterDelete = false; // Ensures first character isn't repeated after delete
 
         // Load voices properly
         function loadVoices() {
@@ -139,14 +139,17 @@
                 ? currentValue.slice(lastValue.length) // Typed characters
                 : ''; // Ignore if backspacing
 
-            if (firstCharAfterDelete && newChars.length > 0) {
-                // Ensures first character is always spoken after Delete
-                queueSpeech(pronunciations[newChars[0]] || newChars[0]);
-                firstCharAfterDelete = false;
-            }
+            if (newChars.length > 0) {
+                if (firstCharAfterDelete) {
+                    queueSpeech(pronunciations[newChars[0]] || newChars[0]); // Speak first character
+                    firstCharAfterDelete = false; // Reset so it's not spoken twice
+                }
 
-            for (const char of newChars.slice(1)) { // Process the rest normally
-                queueSpeech(pronunciations[char] || char);
+                for (let i = 0; i < newChars.length; i++) {
+                    if (i !== 0 || !firstCharAfterDelete) { // Avoid double speaking the first character
+                        queueSpeech(pronunciations[newChars[i]] || newChars[i]);
+                    }
+                }
             }
 
             lastValue = currentValue;
@@ -197,7 +200,7 @@
             speechQueue = [];
             isProcessingQueue = false;
             lastValue = ''; // Reset last typed value
-            firstCharAfterDelete = true; // Ensures next character is always spoken
+            firstCharAfterDelete = true; // Ensures next character is always spoken once
         }
 
         document.getElementById('searchInput').addEventListener('keydown', function(e) {
