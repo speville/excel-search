@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Search with Memory</title>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        body {
+            background: #f0f2f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: white;
+        }
+
+        .header {
+            background: #217346;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex: 1;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+        }
+
+        input[type="file"] {
+            font-size: 100px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-button {
+            background: #185a34;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            border: none;
+            font-size: 0.9rem;
+        }
+
+        .file-button:hover {
+            background: #134428;
+        }
+
+        .search-box {
+            flex: 1;
+            display: flex;
+            gap: 0.5rem;
+            max-width: 500px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            background: #185a34;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #134428;
+        }
+
+        #result {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .success { 
+            background: #28a745;
+            color: white;
+            box-shadow: 0 2px 8px rgba(40,167,69,0.2);
+        }
+        .error { 
+            background: #dc3545;
+            color: white;
+            box-shadow: 0 2px 8px rgba(220,53,69,0.2);
+        }
+        .repeat { 
+            background: #007bff;
+            color: white;
+            box-shadow: 0 2px 8px rgba(0,123,255,0.2);
+        }
+
+        .table-container {
+            flex: 1;
+            overflow: auto;
+            padding: 1rem;
+            scroll-behavior: smooth;
+        }
+
+        .highlight {
+            background-color: #ffeb3b;
+            padding: 2px 0;
+        }
+
+        .row-highlight {
+            background-color: #fff9c4 !important;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        td, th {
+            border: 1px solid #e0e0e0;
+            padding: 8px 12px;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        td {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 300px;
+        }
+
+        /* Excel-like row headers */
+        tr td:first-child {
+            position: sticky;
+            left: 0;
+            background: #f8f9fa;
+            font-weight: 500;
+            color: #666;
+            text-align: center;
+            width: 40px;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Excel Search with Memory</h1>
+            <div class="controls">
+                <div class="file-input-wrapper">
+                    <button class="file-button">Choose Excel File</button>
+                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+                </div>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Type to search in Excel...">
+                    <button onclick="search()">Search</button>
+                </div>
+            </div>
+        </div>
+        <div id="result"></div>
+        <div class="table-container" id="fileContent"></div>
+    </div>
+
+    <script>
+        let fileData = [];
+        let searchHistory = new Set();
+        let audioContext = null;
+        const yaySound = new Audio('yay.mp3');
+
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playErrorSound() {
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.type = 'square';
+            oscillator.frequency.value = 150;
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+
+            // Add a second harsh tone
+            setTimeout(() => {
+                const osc2 = audioContext.createOscillator();
+                const gain2 = audioContext.createGain();
+                
+                osc2.connect(gain2);
+                gain2.connect(audioContext.destination);
+                
+                osc2.type = 'square';
+                osc2.frequency.value = 100;
+                
+                gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                osc2.start(audioContext.currentTime);
+                osc2.stop(audioContext.currentTime + 0.3);
+            }, 100);
+        }
+
+        function playRepeatedMatchSound() {
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.type = 'square';
+            
+            // Create alarm-like oscillating effect
+            let time = audioContext.currentTime;
+            const duration = 0.8;
+            const freq1 = 800;
+            const freq2 = 600;
+            
+            oscillator.frequency.setValueAtTime(freq1, time);
+            oscillator.frequency.setValueAtTime(freq2, time + 0.2);
+            oscillator.frequency.setValueAtTime(freq1, time + 0.4);
+            oscillator.frequency.setValueAtTime(freq2, time + 0.6);
+            
+            gainNode.gain.setValueAtTime(0.2, time);
+            gainNode.gain.setValueAtTime(0.2, time + 0.2);
+            gainNode.gain.setValueAtTime(0.2, time + 0.4);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, time + duration);
+            
+            oscillator.start(time);
+            oscillator.stop(time + duration);
+        }
+
+        function playNewMatchSound() {
+            yaySound.currentTime = 0; // Reset to start
+            yaySound.play();
+        }
+
+        function showResult(message, className) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.className = className;
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+                resultDiv.style.opacity = '0';
+                setTimeout(() => {
+                    resultDiv.textContent = '';
+                    resultDiv.className = '';
+                    resultDiv.style.opacity = '1';
+                }, 300);
+            }, 3000);
+        }
+
+        function highlightText(text, query) {
+            const lowerText = text.toLowerCase();
+            const lowerQuery = query.toLowerCase();
+            const index = lowerText.indexOf(lowerQuery);
+            
+            if (index === -1) return text;
+            
+            return text.slice(0, index) +
+                   `<span class="highlight">${text.slice(index, index + query.length)}</span>` +
+                   text.slice(index + query.length);
+        }
+
+        function search() {
+            const searchInput = document.getElementById('searchInput');
+            const searchQuery = searchInput.value.toLowerCase();
+            if (!searchQuery) return;
+
+            // Remove previous highlights
+            document.querySelectorAll('.highlight').forEach(el => {
+                const parent = el.parentNode;
+                parent.textContent = parent.textContent;
+            });
+            document.querySelectorAll('.row-highlight').forEach(el => {
+                el.classList.remove('row-highlight');
+            });
+
+            let found = false;
+            let firstMatch = null;
+
+            // Search and highlight matches
+            const rows = document.querySelectorAll('table tr');
+            rows.forEach((row, rowIndex) => {
+                if (rowIndex === 0) return; // Skip header row
+                
+                const cells = row.querySelectorAll('td');
+                let rowHasMatch = false;
+                
+                cells.forEach((cell, cellIndex) => {
+                    if (cellIndex === 0) return; // Skip row number column
+                    
+                    const cellText = cell.textContent;
+                    if (cellText.toLowerCase().includes(searchQuery)) {
+                        cell.innerHTML = highlightText(cellText, searchQuery);
+                        row.classList.add('row-highlight');
+                        found = true;
+                        rowHasMatch = true;
+                        if (!firstMatch) firstMatch = row;
+                    }
+                });
+            });
+
+            if (searchHistory.has(searchQuery)) {
+                // Repeated search
+                playRepeatedMatchSound();
+                showResult(`"${searchQuery}" - Repeated search! Found: ${found}`, 'repeat');
+            } else {
+                // New search
+                searchHistory.add(searchQuery);
+                if (found) {
+                    playNewMatchSound();
+                    showResult(`"${searchQuery}" - Match found!`, 'success');
+                } else {
+                    playErrorSound();
+                    showResult(`"${searchQuery}" - No match found`, 'error');
+                }
+            }
+
+            // Scroll to first match
+            if (firstMatch) {
+                firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            // Clear search input
+            searchInput.value = '';
+        }
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    fileData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                    
+                    // Display the data in an Excel-like table
+                    const table = document.createElement('table');
+                    
+                    // Create header row with Excel-like column letters
+                    const headerRow = document.createElement('tr');
+                    const cornerCell = document.createElement('th');
+                    headerRow.appendChild(cornerCell);
+                    
+                    const maxCols = Math.max(...fileData.map(row => row.length));
+                    for (let i = 0; i < maxCols; i++) {
+                        const th = document.createElement('th');
+                        th.textContent = String.fromCharCode(65 + i); // A, B, C, etc.
+                        headerRow.appendChild(th);
+                    }
+                    table.appendChild(headerRow);
+                    
+                    // Create data rows with row numbers
+                    fileData.forEach((row, rowIndex) => {
+                        const tr = document.createElement('tr');
+                        tr.setAttribute('data-row', rowIndex + 1);
+                        
+                        // Add row number
+                        const rowNum = document.createElement('td');
+                        rowNum.textContent = rowIndex + 1;
+                        tr.appendChild(rowNum);
+                        
+                        // Add data cells
+                        row.forEach(cell => {
+                            const td = document.createElement('td');
+                            td.textContent = cell || '';  // Handle null/undefined
+                            tr.appendChild(td);
+                        });
+                        
+                        // Fill empty cells
+                        for (let i = row.length; i < maxCols; i++) {
+                            const td = document.createElement('td');
+                            tr.appendChild(td);
+                        }
+                        
+                        table.appendChild(tr);
+                    });
+                    
+                    document.getElementById('fileContent').innerHTML = '';
+                    document.getElementById('fileContent').appendChild(table);
+                    searchHistory.clear(); // Clear search history for new file
+                } catch (error) {
+                    showResult('Error reading Excel file: ' + error.message, 'error');
+                    playErrorSound();
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        });
+
+        // Add Enter key support for search
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                search();
+            }
+        });
+    </script>
+</body>
+</html>
