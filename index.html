@@ -6,113 +6,20 @@
     <title>Excel Search with Memory</title>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Arial, sans-serif;
-        }
-
-        body {
-            background: #f0f2f5;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            background: white;
-        }
-
-        .header {
-            background: #217346;
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        h1 {
-            font-size: 1.5rem;
-            font-weight: 500;
-        }
-
-        .controls {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            flex: 1;
-        }
-
-        .search-box {
-            flex: 1;
-            display: flex;
-            gap: 0.5rem;
-            max-width: 500px;
-        }
-
-        input[type="text"], input[type="file"] {
-            flex: 1;
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 4px;
-            font-size: 0.9rem;
-        }
-
-        button {
-            padding: 0.5rem 1rem;
-            background: #185a34;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: background 0.2s;
-        }
-
-        #fileContent {
-            padding: 1rem;
-            overflow: auto;
-            flex: 1;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-        }
-
-        td, th {
-            border: 1px solid #e0e0e0;
-            padding: 8px 12px;
-            text-align: left;
-            font-size: 0.9rem;
-        }
-
-        th {
-            background: #f8f9fa;
-            font-weight: 600;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-
-        #speechNotification, #speechStatus {
-            position: fixed;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            z-index: 1000;
-            display: none;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { background: #f0f2f5; min-height: 100vh; display: flex; flex-direction: column; }
+        .container { display: flex; flex-direction: column; height: 100vh; background: white; }
+        .header { background: #217346; color: white; padding: 1rem 2rem; display: flex; align-items: center; gap: 2rem; }
+        h1 { font-size: 1.5rem; font-weight: 500; }
+        .controls { display: flex; align-items: center; gap: 1rem; flex: 1; }
+        .search-box { flex: 1; display: flex; gap: 0.5rem; max-width: 500px; }
+        input[type="text"] { flex: 1; padding: 0.5rem 1rem; border: none; border-radius: 4px; font-size: 0.9rem; }
+        button { padding: 0.5rem 1rem; background: #185a34; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.9rem; }
+        #fileContent { padding: 1rem; overflow: auto; flex: 1; }
+        table { width: 100%; border-collapse: collapse; background: white; }
+        td, th { border: 1px solid #e0e0e0; padding: 8px 12px; text-align: left; font-size: 0.9rem; }
+        th { background: #f8f9fa; font-weight: 600; position: sticky; top: 0; z-index: 10; }
+        #speechNotification, #speechStatus { position: fixed; background: rgba(0, 0, 0, 0.8); color: white; padding: 10px; border-radius: 4px; cursor: pointer; z-index: 1000; display: none; }
         #speechNotification { top: 50%; left: 50%; transform: translate(-50%, -50%); }
         #speechStatus { bottom: 1rem; left: 1rem; background: #28a745; }
     </style>
@@ -143,54 +50,40 @@
         let femaleVoice = null;
         let firstInputAfterDelete = false;
         let fileData = [];
-
+        let searchHistory = new Set();
+        const yaySound = new Audio('yay.mp3');
+        const ohNoSound = new Audio('oh_no.mp3');
         const synth = window.speechSynthesis;
 
         function loadVoices() {
             return new Promise((resolve) => {
                 let voices = synth.getVoices();
                 femaleVoice = voices.find(voice => voice.lang === 'en-US' && voice.name.includes('Google')) || voices[0];
-                if (femaleVoice && femaleVoice.name.includes('Google')) {
-                    resolve();
-                } else {
-                    setTimeout(() => resolve(loadVoices()), 100);
-                }
+                if (femaleVoice) resolve();
+                else setTimeout(() => resolve(loadVoices()), 100);
             });
         }
-
-        async function initializeSpeech() {
-            await loadVoices();
-        }
-
+        async function initializeSpeech() { await loadVoices(); }
         initializeSpeech();
 
-        const pronunciations = { 
-            '1': 'one', '2': 'two', '3': 'three', '4': 'four', '5': 'five',
-            '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine', '0': 'zero'
-        };
+        const pronunciations = { '1': 'one', '2': 'two', '3': 'three', '4': 'four', '5': 'five',
+            '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine', '0': 'zero' };
 
         function handleInput(event) {
             if (!speechEnabled) return;
-
             const currentValue = event.target.value.toUpperCase();
             const newChars = currentValue.length > lastValue.length 
                 ? currentValue.slice(lastValue.length)
                 : '';
-
             if (newChars.length > 0) {
-                if (firstInputAfterDelete) {
-                    firstInputAfterDelete = false;
-                }
-
+                if (firstInputAfterDelete) firstInputAfterDelete = false;
                 newChars.split('').forEach(char => queueSpeech(pronunciations[char] || char));
             }
-
             lastValue = currentValue;
         }
 
         function queueSpeech(text) {
             if (!speechEnabled || !femaleVoice) return;
-
             setTimeout(() => {
                 speechQueue.push(text);
                 if (!isProcessingQueue) speakNext();
@@ -200,17 +93,14 @@
         function speakNext() {
             if (speechQueue.length === 0 || isProcessingQueue) return;
             isProcessingQueue = true;
-
             const utterance = new SpeechSynthesisUtterance(speechQueue.shift());
             utterance.voice = femaleVoice;
             utterance.rate = 1.2;
             utterance.volume = 1.0;
-
             utterance.onend = () => {
                 isProcessingQueue = false;
                 if (speechQueue.length > 0) speakNext();
             };
-
             synth.speak(utterance);
         }
 
@@ -245,15 +135,10 @@
             } else if (e.key === 'Backspace' && speechEnabled && this.value) {
                 const deletedChar = this.value[this.value.length - 1]?.toUpperCase();
                 if (deletedChar) queueSpeech(`DELETED ${pronunciations[deletedChar] || deletedChar}`);
+            } else if (e.key === 'Enter') {
+                search();
             }
         });
-
-        window.addEventListener('load', () => {
-            synth.speak(new SpeechSynthesisUtterance(''));
-            document.getElementById('speechNotification').style.display = 'block';
-            document.addEventListener('click', enableSpeech, { once: true });
-        });
-
     </script>
 </body>
 </html>
