@@ -266,6 +266,7 @@
                            placeholder="Type to search in Excel..."
                            oninput="handleInput(event)">
                     <button onclick="search()">Search</button>
+                    <button onclick="repeatSearch()">LET ME REPEAT</button> <!-- New Button -->
                 </div>
             </div>
         </div>
@@ -285,7 +286,7 @@
         let searchHistory = new Set();
         let audioContext = null;
         const yaySound = new Audio('yay.mp3');
-        const ohNoSound = new Audio('oh_no.mp3');
+        const ohNoSound = new Audio('oh no.mp3');
         const synth = window.speechSynthesis;
         let speechEnabled = false;
         let lastValue = '';
@@ -417,6 +418,14 @@
             isProcessingQueue = false;
             const status = document.getElementById('speechStatus');
             status.textContent = `Voice Feedback: ${speechEnabled ? 'ON' : 'OFF'}`;
+        }
+
+        function repeatSearch() {
+            const searchInput = document.getElementById('searchInput');
+            const searchQuery = searchInput.value;
+            if (searchQuery) {
+                queueSpeech(searchQuery);
+            }
         }
 
         window.addEventListener('load', () => {
