@@ -414,6 +414,9 @@
             if (e.key === 'Delete' && speechEnabled) {
                 // Clear the search input
                 this.value = '';
+                synth.cancel(); // Cancel any ongoing speech
+                speechQueue = []; // Clear the speech queue
+                isProcessingQueue = false;
                 queueSpeech('CLEAR');
                 e.preventDefault(); // Prevent default delete behavior
             } else if (e.key === 'Backspace' && speechEnabled && this.value) {
