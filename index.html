@@ -285,12 +285,13 @@
         let searchHistory = new Set();
         let audioContext = null;
         const yaySound = new Audio('yay.mp3');
-        const ohNoSound = new Audio('oh no.mp3');
+        const ohNoSound = new Audio('oh_no.mp3');
         const synth = window.speechSynthesis;
         let speechEnabled = false;
         let lastValue = '';
         let speechQueue = [];
         let isProcessingQueue = false;
+        let firstInputAfterDelete = false;
 
         const pronunciations = {
             '1': 'one',
@@ -338,87 +339,60 @@
             isProcessingQueue = true;
             const text = speechQueue.shift();
             const utterance = new SpeechSynthesisUtterance(text);
-            // Use a more modern-sounding voice configuration
             utterance.voice = synth.getVoices().find(voice => voice.lang === 'en-US' && voice.name.includes('Google')) || synth.getVoices()[0];
-            utterance.rate = 1.5;  // Moderate speed for clarity
-            utterance.pitch = 1.0;  // Natural pitch
-            utterance.volume = 0.9; // Slightly reduced volume
+            utterance.rate = 1.5;
+            utterance.pitch = 1.0;
+            utterance.volume = 0.9;
 
             utterance.onend = () => {
                 isProcessingQueue = false;
                 if (speechQueue.length > 0) {
-                    setTimeout(() => speakNext(), 50); // Small delay between utterances
+                    setTimeout(() => speakNext(), 50);
                 }
             };
 
             synth.speak(utterance);
         }
 
-        function playCharacterSound(char) {
-            initAudio();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-
-            // Modern frequencies for different character types
-            let baseFreq = 440; // A4 note
-            if (/[0-9]/.test(char)) {
-                baseFreq = 440 + (char * 20); // Numbers increase in pitch
-            } else if (/[A-Z]/.test(char)) {
-                baseFreq = 440 + ((char.charCodeAt(0) - 65) * 15); // Letters spread across scale
-            }
-
-            oscillator.type = 'sine'; // Smoother sine wave
-            oscillator.frequency.value = baseFreq;
-
-            // Short, clean envelope
-            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
-            gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.01);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.1);
-        }
-
         function queueSpeech(text) {
             if (!speechEnabled) return;
 
-            // Play modern sound for single characters
-            if (text.length === 1) {
-                playCharacterSound(text);
-            } else {
-                // Use speech synthesis for words (like "DELETED" and "CLEARED")
-                speechQueue.push(text);
-                if (!isProcessingQueue) speakNext();
-            }
+            speechQueue.push(text);
+            if (!isProcessingQueue) speakNext();
         }
 
         function handleInput(event) {
             if (!speechEnabled) return;
-            const currentValue = event.target.value;
+            const currentValue = event.target.value.toUpperCase();
+            const newChars = currentValue.length > lastValue.length
+                ? currentValue.slice(lastValue.length)
+                : '';
 
-            if (currentValue.length >= lastValue.length) {
-                const char = currentValue.slice(-1).toUpperCase();
-                if (char) {
-                    queueSpeech(pronunciations[char] || char);
+            if (newChars.length > 0) {
+                if (firstInputAfterDelete) {
+                    firstInputAfterDelete = false;
                 }
+
+                newChars.split('').forEach(char => queueSpeech(pronunciations[char] || char));
             }
 
             lastValue = currentValue;
         }
 
-        // Add backspace and delete key detection
+        function clearSpeechQueue() {
+            synth.cancel();
+            speechQueue = [];
+            isProcessingQueue = false;
+            lastValue = '';
+            firstInputAfterDelete = true;
+        }
+
         document.getElementById('searchInput').addEventListener('keydown', function(e) {
             if (e.key === 'Delete' && speechEnabled) {
-                // Clear the search input
                 this.value = '';
-                synth.cancel(); // Cancel any ongoing speech
-                speechQueue = []; // Clear the speech queue
-                isProcessingQueue = false;
-                queueSpeech('CLEAR');
-                e.preventDefault(); // Prevent default delete behavior
+                clearSpeechQueue();
+                queueSpeech('CLEARED');
+                e.preventDefault();
             } else if (e.key === 'Backspace' && speechEnabled && this.value) {
                 const deletedChar = this.value[this.value.length - 1].toUpperCase();
                 const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
@@ -446,7 +420,6 @@
         }
 
         window.addEventListener('load', () => {
-            // Initialize speech
             synth.speak(new SpeechSynthesisUtterance(''));
             document.getElementById('speechNotification').style.display = 'block';
             document.addEventListener('click', enableSpeech, { once: true });
@@ -555,7 +528,6 @@
         }
 
         function search() {
-            // Clear any ongoing speech and the queue
             synth.cancel();
             speechQueue = [];
             isProcessingQueue = false;
