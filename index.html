@@ -265,8 +265,13 @@
                 fileData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
                 let table = '<table>';
-                fileData.forEach(row => {
-                    table += '<tr>' + row.map(cell => `<td>${cell || ''}</td>`).join('') + '</tr>';
+                fileData.forEach((row, rowIndex) => {
+                    table += '<tr>';
+                    table += `<td>${rowIndex + 1}</td>`; // Add row number
+                    row.forEach(cell => {
+                        table += `<td>${cell || ''}</td>`;
+                    });
+                    table += '</tr>';
                 });
                 table += '</table>';
 
@@ -274,6 +279,55 @@
             };
 
             reader.readAsArrayBuffer(file);
+        });
+
+        function search() {
+            const searchQuery = document.getElementById('searchInput').value.trim().toLowerCase();
+            if (!searchQuery) return;
+
+            const rows = document.querySelectorAll('#fileContent table tr');
+            let found = false;
+
+            rows.forEach((row, rowIndex) => {
+                if (rowIndex === 0) return; // Skip header row
+
+                const cells = row.querySelectorAll('td');
+                let rowHasMatch = false;
+
+                cells.forEach((cell, cellIndex) => {
+                    if (cellIndex === 0) return; // Skip row number cell
+
+                    const cellText = cell.textContent.toLowerCase();
+                    if (cellText.includes(searchQuery)) {
+                        cell.innerHTML = cellText.replace(
+                            new RegExp(searchQuery, 'gi'),
+                            match => `<span class="highlight">${match}</span>`
+                        );
+                        row.classList.add('row-highlight');
+                        found = true;
+                        rowHasMatch = true;
+                    } else {
+                        cell.innerHTML = cell.textContent; // Reset cell content
+                    }
+                });
+
+                if (!rowHasMatch) {
+                    row.classList.remove('row-highlight');
+                }
+            });
+
+            if (found) {
+                console.log('Match found!');
+            } else {
+                console.log('No match found.');
+            }
+        }
+
+        // Add Enter key support
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                search();
+            }
         });
 
         window.addEventListener('load', () => {
