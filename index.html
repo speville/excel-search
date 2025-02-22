@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excel Search with Memory</title>
+    <title>Excel & Google Sheets Search with Memory</title>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
     <style>
         * {
             margin: 0;
@@ -32,8 +33,8 @@
             color: white;
             padding: 1rem 2rem;
             display: flex;
-            align-items: center;
-            gap: 2rem;
+            flex-direction: column;
+            gap: 1rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
@@ -44,9 +45,14 @@
 
         .controls {
             display: flex;
-            align-items: center;
+            flex-direction: column;
             gap: 1rem;
-            flex: 1;
+        }
+
+        .input-options {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
         }
 
         .file-input-wrapper {
@@ -71,20 +77,41 @@
             cursor: pointer;
             border: none;
             font-size: 0.9rem;
+            white-space: nowrap;
         }
 
         .file-button:hover {
             background: #134428;
         }
 
-        .search-box {
+        .google-sheets-input {
             flex: 1;
             display: flex;
             gap: 0.5rem;
-            max-width: 500px;
+            align-items: center;
         }
 
-        input[type="text"] {
+        .google-sheets-input input[type="text"] {
+            flex: 1;
+            padding: 0.5rem 1rem;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 4px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .google-sheets-input input[type="text"]::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .search-box {
+            display: flex;
+            gap: 0.5rem;
+            max-width: 800px;
+        }
+
+        .search-box input[type="text"] {
             flex: 1;
             padding: 0.5rem 1rem;
             border: none;
@@ -94,7 +121,7 @@
             font-size: 0.9rem;
         }
 
-        input[type="text"]::placeholder {
+        .search-box input[type="text"]::placeholder {
             color: rgba(255,255,255,0.7);
         }
 
@@ -107,10 +134,16 @@
             cursor: pointer;
             font-size: 0.9rem;
             transition: background 0.2s;
+            white-space: nowrap;
         }
 
         button:hover {
             background: #134428;
+        }
+
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
         }
 
         #result {
@@ -254,16 +287,24 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>Excel Search with Memory</h1>
+            <h1>Excel & Google Sheets Search with Memory</h1>
             <div class="controls">
-                <div class="file-input-wrapper">
-                    <button class="file-button">Choose Excel File</button>
-                    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+                <div class="input-options">
+                    <div class="file-input-wrapper">
+                        <button class="file-button">Choose Excel File</button>
+                        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+                    </div>
+                    <div class="google-sheets-input">
+                        <input type="text" 
+                               id="sheetsUrl" 
+                               placeholder="Paste Google Sheets URL (must be publicly viewable)">
+                        <button onclick="loadGoogleSheet()">Load Sheet</button>
+                    </div>
                 </div>
                 <div class="search-box">
                     <input type="text"
                            id="searchInput"
-                           placeholder="Type to search in Excel..."
+                           placeholder="Type to search..."
                            oninput="handleInput(event)">
                     <button onclick="search()">Search</button>
                     <button onclick="repeatSearch()">LET ME REPEAT</button>
@@ -387,21 +428,6 @@
             firstInputAfterDelete = true;
         }
 
-        document.getElementById('searchInput').addEventListener('keydown', function(e) {
-            if (e.key === 'Delete' && speechEnabled) {
-                this.value = '';
-                clearSpeechQueue();
-                queueSpeech('CLEARED');
-                e.preventDefault();
-            } else if (e.key === 'Backspace' && speechEnabled && this.value) {
-                const deletedChar = this.value[this.value.length - 1].toUpperCase();
-                const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
-                queueSpeech(`REMOVED ${deletedPronunciation}`);
-            } else if (e.key === 'Enter') {
-                search();
-            }
-        });
-
         function enableSpeech() {
             speechEnabled = true;
             document.getElementById('speechNotification').style.display = 'none';
@@ -490,7 +516,7 @@
             const freq1 = 800;
             const freq2 = 600;
 
-oscillator.frequency.setValueAtTime(freq1, time);
+            oscillator.frequency.setValueAtTime(freq1, time);
             oscillator.frequency.setValueAtTime(freq2, time + 0.2);
             oscillator.frequency.setValueAtTime(freq1, time + 0.4);
             oscillator.frequency.setValueAtTime(freq2, time + 0.6);
@@ -536,11 +562,126 @@ oscillator.frequency.setValueAtTime(freq1, time);
                    text.slice(index + query.length);
         }
 
+        document.getElementById('searchInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Delete' && speechEnabled) {
+                this.value = '';
+                clearSpeechQueue();
+                queueSpeech('CLEARED');
+                e.preventDefault();
+            } else if (e.key === 'Backspace' && speechEnabled && this.value) {
+                const deletedChar = this.value[this.value.length - 1].toUpperCase();
+                const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
+                queueSpeech(`REMOVED ${deletedPronunciation}`);
+            } else if (e.key === 'Enter') {
+                search();
+            }
+        });
+
+        async function loadGoogleSheet() {
+            const urlInput = document.getElementById('sheetsUrl');
+            const url = urlInput.value.trim();
+            
+            if (!url) {
+                showResult('Please enter a Google Sheets URL', 'error');
+                playErrorSound();
+                return;
+            }
+
+            // Extract the sheet ID from the URL
+            let sheetId;
+            try {
+                const matches = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+                if (matches && matches[1]) {
+                    sheetId = matches[1];
+                } else {
+                    throw new Error('Invalid Google Sheets URL');
+                }
+            } catch (error) {
+                showResult('Invalid Google Sheets URL', 'error');
+                playErrorSound();
+                return;
+            }
+
+            // Construct the export URL
+            const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
+
+            try {
+                const response = await fetch(exportUrl);
+                if (!response.ok) {
+                    throw new Error('Failed to access the spreadsheet. Make sure it\'s publicly viewable.');
+                }
+
+                const blob = await response.blob();
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
+                        fileData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                        const table = document.createElement('table');
+
+                        const headerRow = document.createElement('tr');
+                        const cornerCell = document.createElement('th');
+                        headerRow.appendChild(cornerCell);
+
+                        const maxCols = Math.max(...fileData.map(row => row.length));
+                        for (let i = 0; i < maxCols; i++) {
+                            const th = document.createElement('th');
+                            th.textContent = String.fromCharCode(65 + i);
+                            headerRow.appendChild(th);
+                        }
+                        table.appendChild(headerRow);
+
+                        fileData.forEach((row, rowIndex) => {
+                            const tr = document.createElement('tr');
+                            tr.setAttribute('data-row', rowIndex + 1);
+
+                            const rowNum = document.createElement('td');
+                            rowNum.textContent = rowIndex + 1;
+                            tr.appendChild(rowNum);
+
+                            row.forEach(cell => {
+                                const td = document.createElement('td');
+                                td.textContent = cell || '';
+                                tr.appendChild(td);
+                            });
+
+                            for (let i = row.length; i < maxCols; i++) {
+                                const td = document.createElement('td');
+                                tr.appendChild(td);
+                            }
+
+                            table.appendChild(tr);
+                        });
+
+                        document.getElementById('fileContent').innerHTML = '';
+                        document.getElementById('fileContent').appendChild(table);
+                        searchHistory.clear();
+                        showResult('Google Sheet loaded successfully!', 'success');
+                        playNewMatchSound();
+                        urlInput.value = '';
+                    } catch (error) {
+                        showResult('Error processing spreadsheet: ' + error.message, 'error');
+                        playErrorSound();
+                    }
+                };
+
+                reader.readAsArrayBuffer(blob);
+            } catch (error) {
+                showResult(error.message, 'error');
+                playErrorSound();
+            }
+        }
+
         function search() {
             synth.cancel();
             speechQueue = [];
             isProcessingQueue = false;
-            firstInputAfterDelete = true;  // Added this line to fix the first character reading issue
+            firstInputAfterDelete = true;
 
             const searchInput = document.getElementById('searchInput');
             const searchQuery = searchInput.value.toLowerCase();
@@ -598,7 +739,7 @@ oscillator.frequency.setValueAtTime(freq1, time);
             }
 
             searchInput.value = '';
-            lastValue = '';  // Added this line to reset the last value state
+            lastValue = '';
         }
 
         document.getElementById('fileInput').addEventListener('change', function(e) {
@@ -669,5 +810,3 @@ oscillator.frequency.setValueAtTime(freq1, time);
     </script>
 </body>
 </html>
-
-
