@@ -242,6 +242,9 @@
                 clearSpeechQueue();
                 queueSpeech('CLEAR');
                 e.preventDefault();
+            } else if (e.key === 'Backspace' && speechEnabled && this.value) {
+                const deletedChar = this.value[this.value.length - 1]?.toUpperCase();
+                if (deletedChar) queueSpeech(`DELETED ${pronunciations[deletedChar] || deletedChar}`);
             }
         });
 
