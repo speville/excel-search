@@ -304,10 +304,10 @@
                 <div class="search-box">
                     <input type="text"
                            id="searchInput"
-                           placeholder="Type to search... (DEL to clear all text)"
+                           placeholder="Type to search... (DEL to remove all text instantly)"
                            oninput="handleInput(event)">
                     <button onclick="search()">Search</button>
-                    <button onclick="repeatSearch()">LET ME REPEAT</button>
+                    <button onclick="repeatSearch()">Repeat 🔊</button>
                 </div>
             </div>
         </div>
@@ -374,7 +374,208 @@
             'Z': 'Z'
         };
 
-        // (Keep all existing helper functions the same)
+        function speakNext() {
+            if (speechQueue.length === 0 || isProcessingQueue) return;
+
+            isProcessingQueue = true;
+            const text = speechQueue.shift();
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.voice = synth.getVoices().find(voice => voice.lang === 'en-US' && voice.name.includes('Google')) || synth.getVoices()[0];
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            utterance.volume = 0.9;
+
+            utterance.onend = () => {
+                isProcessingQueue = false;
+                if (speechQueue.length > 0) {
+                    setTimeout(() => speakNext(), 15);
+                }
+            };
+
+            synth.speak(utterance);
+        }
+
+        function queueSpeech(text) {
+            if (!speechEnabled) return;
+
+            speechQueue.push(text);
+            if (!isProcessingQueue) speakNext();
+        }
+
+        function handleInput(event) {
+            if (!speechEnabled) return;
+            const currentValue = event.target.value.toUpperCase();
+            const newChars = currentValue.length > lastValue.length
+                ? currentValue.slice(lastValue.length)
+                : '';
+
+            if (newChars.length > 0) {
+                if (firstInputAfterDelete) {
+                    firstInputAfterDelete = false;
+                }
+
+                newChars.split('').forEach(char => queueSpeech(pronunciations[char] || char));
+            }
+
+            lastValue = currentValue;
+        }
+
+        function clearSpeechQueue() {
+            synth.cancel();
+            speechQueue = [];
+            isProcessingQueue = false;
+            lastValue = '';
+            firstInputAfterDelete = true;
+        }
+
+        function enableSpeech() {
+            speechEnabled = true;
+            document.getElementById('speechNotification').style.display = 'none';
+            const status = document.getElementById('speechStatus');
+            status.style.display = 'block';
+            status.textContent = 'Voice Feedback: ON';
+        }
+
+        function toggleSpeech() {
+            speechEnabled = !speechEnabled;
+            synth.cancel();
+            speechQueue = [];
+            isProcessingQueue = false;
+            const status = document.getElementById('speechStatus');
+            status.textContent = `Voice Feedback: ${speechEnabled ? 'ON' : 'OFF'}`;
+        }
+
+        function repeatSearch() {
+            const searchInput = document.getElementById('searchInput');
+            const searchQuery = searchInput.value;
+            if (searchQuery) {
+                const digitByDigit = searchQuery.split('').map(char => pronunciations[char] || char).join(' ');
+                queueSpeech(digitByDigit);
+            }
+        }
+
+        window.addEventListener('load', () => {
+            synth.speak(new SpeechSynthesisUtterance(''));
+            document.getElementById('speechNotification').style.display = 'block';
+            document.addEventListener('click', enableSpeech, { once: true });
+        });
+
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playErrorSound() {
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.type = 'square';
+            oscillator.frequency.value = 150;
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+
+            setTimeout(() => {
+                const osc2 = audioContext.createOscillator();
+                const gain2 = audioContext.createGain();
+
+                osc2.connect(gain2);
+                gain2.connect(audioContext.destination);
+
+                osc2.type = 'square';
+                osc2.frequency.value = 100;
+
+                gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+                osc2.start(audioContext.currentTime);
+                osc2.stop(audioContext.currentTime + 0.3);
+            }, 100);
+        }
+
+        function playRepeatedMatchSound() {
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.type = 'square';
+
+            let time = audioContext.currentTime;
+            const duration = 0.8;
+            const freq1 = 800;
+            const freq2 = 600;
+
+            oscillator.frequency.setValueAtTime(freq1, time);
+            oscillator.frequency.setValueAtTime(freq2, time + 0.2);
+            oscillator.frequency.setValueAtTime(freq1, time + 0.4);
+            oscillator.frequency.setValueAtTime(freq2, time + 0.6);
+
+            gainNode.gain.setValueAtTime(0.2, time);
+            gainNode.gain.setValueAtTime(0.2, time + 0.2);
+            gainNode.gain.setValueAtTime(0.2, time + 0.4);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, time + duration);
+
+            oscillator.start(time);
+            oscillator.stop(time + duration);
+        }
+
+        function playNewMatchSound() {
+            yaySound.currentTime = 0;
+            yaySound.play();
+        }
+
+        function showResult(message, className) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.className = className;
+
+            setTimeout(() => {
+                resultDiv.style.opacity = '0';
+                setTimeout(() => {
+                    resultDiv.textContent = '';
+                    resultDiv.className = '';
+                    resultDiv.style.opacity = '1';
+                }, 300);
+            }, 3000);
+        }
+
+        function highlightText(text, query) {
+            const lowerText = text.toLowerCase();
+            const lowerQuery = query.toLowerCase();
+            const index = lowerText.indexOf(lowerQuery);
+
+            if (index === -1) return text;
+
+            return text.slice(0, index) +
+                   `<span class="highlight">${text.slice(index, index + query.length)}</span>` +
+                   text.slice(index + query.length);
+        }
+
+        document.getElementById('searchInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Delete' && speechEnabled) {
+                this.value = '';
+                clearSpeechQueue();
+                queueSpeech('CLEARED');
+                e.preventDefault();
+            } else if (e.key === 'Backspace' && speechEnabled && this.value) {
+                const deletedChar = this.value[this.value.length - 1].toUpperCase();
+                const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
+                queueSpeech(`REMOVED ${deletedPronunciation}`);
+            } else if (e.key === 'Enter') {
+                search();
+            }
+        });
 
         async function loadGoogleSheet() {
             const urlInput = document.getElementById('sheetsUrl');
@@ -386,26 +587,29 @@
                 return;
             }
 
-            let sheetId, gid;
+            // Extract the sheet ID from the URL
+            let sheetId;
             try {
-                const sheetIdMatch = url.match(/\/d\/([a-zA-Z0-9-_]+)/);
-                if (!sheetIdMatch) throw new Error('Invalid Google Sheets URL');
-                sheetId = sheetIdMatch[1];
-
-                const gidMatch = url.match(/gid=(\d+)/);
-                gid = gidMatch ? gidMatch[1] : null;
+                const matches = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+                if (matches && matches[1]) {
+                    sheetId = matches[1];
+                } else {
+                    throw new Error('Invalid Google Sheets URL');
+                }
             } catch (error) {
                 showResult('Invalid Google Sheets URL', 'error');
                 playErrorSound();
                 return;
             }
 
-            let exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
-            if (gid) exportUrl += `&gid=${gid}`;
+            // Construct the export URL
+            const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
 
             try {
                 const response = await fetch(exportUrl);
-                if (!response.ok) throw new Error('Failed to access spreadsheet. Ensure it\'s publicly viewable.');
+                if (!response.ok) {
+                    throw new Error('Failed to access the spreadsheet. Make sure it\'s publicly viewable.');
+                }
 
                 const blob = await response.blob();
                 const reader = new FileReader();
@@ -414,43 +618,41 @@
                     try {
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
-                        const sheetName = workbook.SheetNames[gid ? workbook.SheetNames.findIndex(name => workbook.Sheets[name]['!id'] == gid) : 0];
-                        const worksheet = workbook.Sheets[sheetName];
+                        const firstSheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[firstSheetName];
                         fileData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
                         const table = document.createElement('table');
-                        const headerRow = document.createElement('tr');
-                        headerRow.appendChild(document.createElement('th')); // Empty corner cell
 
-                        // Generate headers starting from B (skip A)
+                        const headerRow = document.createElement('tr');
+                        const cornerCell = document.createElement('th');
+                        headerRow.appendChild(cornerCell);
+
                         const maxCols = Math.max(...fileData.map(row => row.length));
-                        for (let i = 1; i < maxCols; i++) {
+                        for (let i = 0; i < maxCols; i++) {
                             const th = document.createElement('th');
-                            th.textContent = String.fromCharCode(64 + i); // B, C, etc.
+                            th.textContent = String.fromCharCode(65 + i);
                             headerRow.appendChild(th);
                         }
                         table.appendChild(headerRow);
 
-                        // Process data rows
                         fileData.forEach((row, rowIndex) => {
                             const tr = document.createElement('tr');
                             tr.setAttribute('data-row', rowIndex + 1);
 
-                            // Row number cell
                             const rowNum = document.createElement('td');
                             rowNum.textContent = rowIndex + 1;
                             tr.appendChild(rowNum);
 
-                            // Data cells (skip column A)
-                            for (let cellIndex = 1; cellIndex < row.length; cellIndex++) {
+                            row.forEach(cell => {
                                 const td = document.createElement('td');
-                                td.textContent = row[cellIndex] || '';
+                                td.textContent = cell || '';
                                 tr.appendChild(td);
-                            }
+                            });
 
-                            // Fill empty cells if needed
                             for (let i = row.length; i < maxCols; i++) {
-                                tr.appendChild(document.createElement('td'));
+                                const td = document.createElement('td');
+                                tr.appendChild(td);
                             }
 
                             table.appendChild(tr);
@@ -475,7 +677,136 @@
             }
         }
 
-        // (Keep all remaining JavaScript code the same)
+        function search() {
+            synth.cancel();
+            speechQueue = [];
+            isProcessingQueue = false;
+            firstInputAfterDelete = true;
+
+            const searchInput = document.getElementById('searchInput');
+            const searchQuery = searchInput.value.toLowerCase();
+            if (!searchQuery) return;
+
+            document.querySelectorAll('.highlight').forEach(el => {
+                const parent = el.parentNode;
+                parent.textContent = parent.textContent;
+            });
+            document.querySelectorAll('.row-highlight').forEach(el => {
+                el.classList.remove('row-highlight');
+            });
+
+            let found = false;
+            let firstMatch = null;
+
+            const rows = document.querySelectorAll('table tr');
+            rows.forEach((row, rowIndex) => {
+                if (rowIndex === 0) return;
+
+                const cells = row.querySelectorAll('td');
+                let rowHasMatch = false;
+
+                cells.forEach((cell, cellIndex) => {
+                    if (cellIndex === 0) return;
+
+                    const cellText = cell.textContent;
+                    if (cellText.toLowerCase().includes(searchQuery)) {
+                        cell.innerHTML = highlightText(cellText, searchQuery);
+                        row.classList.add('row-highlight');
+                        found = true;
+                        rowHasMatch = true;
+                        if (!firstMatch) firstMatch = row;
+                    }
+                });
+            });
+
+            if (searchHistory.has(searchQuery)) {
+                playRepeatedMatchSound();
+                showResult(`"${searchQuery}" - Repeated search! Found: ${found}`, 'repeat');
+            } else {
+                searchHistory.add(searchQuery);
+                if (found) {
+                    playNewMatchSound();
+                    showResult(`"${searchQuery}" - Match found!`, 'success');
+                } else {
+                    ohNoSound.currentTime = 0;
+                    ohNoSound.play();
+                    showResult(`"${searchQuery}" - No match found`, 'error');
+                }
+            }
+
+            if (firstMatch) {
+                firstMatch.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+
+            searchInput.value = '';
+            lastValue = '';
+        }
+
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    fileData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                    const table = document.createElement('table');
+
+                    const headerRow = document.createElement('tr');
+                    const cornerCell = document.createElement('th');
+                    headerRow.appendChild(cornerCell);
+
+                    const maxCols = Math.max(...fileData.map(row => row.length));
+                    for (let i = 0; i < maxCols; i++) {
+                        const th = document.createElement('th');
+                        th.textContent = String.fromCharCode(65 + i);
+                        headerRow.appendChild(th);
+                    }
+                    table.appendChild(headerRow);
+
+                    fileData.forEach((row, rowIndex) => {
+                        const tr = document.createElement('tr');
+                        tr.setAttribute('data-row', rowIndex + 1);
+
+                        const rowNum = document.createElement('td');
+                        rowNum.textContent = rowIndex + 1;
+                        tr.appendChild(rowNum);
+
+                        row.forEach(cell => {
+                            const td = document.createElement('td');
+                            td.textContent = cell || '';
+                            tr.appendChild(td);
+                        });
+
+                        for (let i = row.length; i < maxCols; i++) {
+                            const td = document.createElement('td');
+                            tr.appendChild(td);
+                        }
+
+                        table.appendChild(tr);
+                    });
+
+                    document.getElementById('fileContent').innerHTML = '';
+                    document.getElementById('fileContent').appendChild(table);
+                    searchHistory.clear();
+                } catch (error) {
+                    showResult('Error reading Excel file: ' + error.message, 'error');
+                    playErrorSound();
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        });
+
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                search();
+            }
+        });
     </script>
 </body>
 </html>
