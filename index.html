@@ -587,14 +587,20 @@
                 return;
             }
 
-            // Extract the sheet ID from the URL
-            let sheetId;
+            // Extract the sheet ID and GID from the URL
+            let sheetId, gid;
             try {
-                const matches = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-                if (matches && matches[1]) {
-                    sheetId = matches[1];
+                const idMatch = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+                const gidMatch = url.match(/[#&]gid=([0-9]+)/);
+                
+                if (idMatch && idMatch[1]) {
+                    sheetId = idMatch[1];
                 } else {
                     throw new Error('Invalid Google Sheets URL');
+                }
+                
+                if (gidMatch && gidMatch[1]) {
+                    gid = gidMatch[1];
                 }
             } catch (error) {
                 showResult('Invalid Google Sheets URL', 'error');
@@ -602,8 +608,8 @@
                 return;
             }
 
-            // Construct the export URL
-            const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
+            // Construct the export URL with GID if available
+            const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx${gid ? '&gid=' + gid : ''}`;
 
             try {
                 const response = await fetch(exportUrl);
@@ -644,9 +650,25 @@
                             rowNum.textContent = rowIndex + 1;
                             tr.appendChild(rowNum);
 
-                            row.forEach(cell => {
+                            row.forEach((cellData, colIndex) => {
                                 const td = document.createElement('td');
-                                td.textContent = cell || '';
+                                if (typeof cellData === 'object' && cellData !== null) {
+                                    // Handle cell object with potential hyperlink
+                                    if (cellData.hasOwnProperty('v')) {
+                                        if (cellData.hasOwnProperty('h')) {
+                                            // Cell has hyperlink
+                                            const a = document.createElement('a');
+                                            a.href = cellData.h;
+                                            a.textContent = cellData.v;
+                                            a.target = "_blank";
+                                            td.appendChild(a);
+                                        } else {
+                                            td.textContent = cellData.v;
+                                        }
+                                    }
+                                } else {
+                                    td.textContent = cellData || '';
+                                }
                                 tr.appendChild(td);
                             });
 
@@ -776,10 +798,26 @@
                         rowNum.textContent = rowIndex + 1;
                         tr.appendChild(rowNum);
 
-                        row.forEach(cell => {
-                            const td = document.createElement('td');
-                            td.textContent = cell || '';
-                            tr.appendChild(td);
+                row.forEach((cellData, colIndex) => {
+                    const td = document.createElement('td');
+                    if (typeof cellData === 'object' && cellData !== null) {
+                        // Handle cell object with potential hyperlink
+                        if (cellData.hasOwnProperty('v')) {
+                            if (cellData.hasOwnProperty('h')) {
+                                // Cell has hyperlink
+                                const a = document.createElement('a');
+                                a.href = cellData.h;
+                                a.textContent = cellData.v;
+                                a.target = "_blank";
+                                td.appendChild(a);
+                            } else {
+                                td.textContent = cellData.v;
+                            }
+                        }
+                    } else {
+                        td.textContent = cellData || '';
+                    }
+                    tr.appendChild(td);
                         });
 
                         for (let i = row.length; i < maxCols; i++) {
