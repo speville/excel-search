@@ -262,40 +262,28 @@
         // Initialize Chrome voice synthesis immediately
         (async function initializeVoices() {
             try {
-                // Pre-initialize voices
-                speechSynthesis.getVoices();
-
-                // Wait for Chrome voice events
-                if ('onvoiceschanged' in speechSynthesis) {
-                    await new Promise(resolve => {
-                        speechSynthesis.onvoiceschanged = resolve;
-                    });
-                }
-
-                // Additional wait to ensure voices are loaded
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-                function findBestVoice() {
+                // Force Chrome to load voices
+                speechSynthesis.onvoiceschanged = function() {
                     const voices = speechSynthesis.getVoices();
-                    console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
+                    console.log('Available voices:', voices.map(v => v.name));
+                    
+                    // Get US female voice for normal typing
+                    googleVoice = voices.find(v => v.name === 'Google US English Female') ||
+                                voices.find(v => v.name === 'Google US English') ||
+                                voices.find(v => v.lang === 'en-US') ||
+                                voices[0]; // Fallback to first available voice
 
-                    // Try to find the best voice in order of preference
-                    return voices.find(v => v.name === 'Google US English') ||
-                           voices.find(v => v.name.includes('Google') && v.lang === 'en-US') ||
-                           voices.find(v => v.name.includes('English') && v.lang === 'en-US') ||
-                           voices.find(v => v.lang === 'en-US') ||
-                           voices[0];
-                }
-
-                // Try to get and test the voice
-                googleVoice = findBestVoice();
-                if (googleVoice) {
-                    console.log('Voice selected:', googleVoice.name);
-                    const test = new SpeechSynthesisUtterance('');
-                    test.voice = googleVoice;
-                    test.volume = 0;
-                    speechSynthesis.speak(test);
-                }
+                    // Store UK female voice for repeat function
+                    window.ukVoice = voices.find(v => v.name === 'Google UK English Female') ||
+                                   voices.find(v => v.lang === 'en-GB') ||
+                                   googleVoice; // Fallback to same voice as typing
+                    
+                    console.log('US Voice:', googleVoice?.name);
+                    console.log('UK Voice:', window.ukVoice?.name);
+                };
+                
+                // Initial voice load attempt
+                speechSynthesis.getVoices();
 
                 document.getElementById('speechNotification').style.display = 'block';
             } catch (error) {
@@ -324,36 +312,42 @@
 
         // Handle input with better character tracking
         async function handleInput(event) {
-            if (!speechEnabled || processingInput) return;
+            if (!speechEnabled || processingInput || !googleVoice) return;
 
             processingInput = true;
             const currentValue = event.target.value.toUpperCase();
-
-            // Clear any ongoing speech
+            
             clearSpeech();
 
-            try {
-                // Handle text replacement (paste/selection)
-                if (!currentValue.startsWith(lastValue) && !lastValue.startsWith(currentValue)) {
-                    // Speak all characters
-                    for (const char of currentValue) {
-                        if (pronunciations[char]) {
-                            await speak(pronunciations[char], 0.05);
-                        }
-                    }
-                } else {
-                    // Handle normal typing
-                    const newChars = currentValue.slice(lastValue.length);
-                    for (const char of newChars) {
-                        if (pronunciations[char]) {
-                            await speak(pronunciations[char], 0.05);
-                        }
-                    }
-                }
-            } finally {
-                lastValue = currentValue;
-                processingInput = false;
+            // Get the current selection
+            const selStart = event.target.selectionStart;
+            const selEnd = event.target.selectionEnd;
+            const hasSelection = selEnd - selStart > 0;
+
+            // Reset tracking if text was deleted or replaced
+            if (currentValue.length < lastValue.length || hasSelection) {
+                lastValue = '';
             }
+
+            // Determine which characters to speak
+            const newChars = lastValue === '' ? currentValue : currentValue.slice(lastValue.length);
+            
+            // Create a single utterance with all new characters
+            const newPronunciations = newChars
+                .split('')
+                .filter(char => pronunciations[char])
+                .map(char => pronunciations[char])
+                .join(' ');
+            
+            if (newPronunciations) {
+                const utterance = new SpeechSynthesisUtterance(newPronunciations);
+                utterance.voice = googleVoice;
+                utterance.rate = 1.0;
+                speechSynthesis.speak(utterance);
+            }
+            
+            lastValue = currentValue;
+            processingInput = false;
         }
 
         // Clear ongoing speech
@@ -375,8 +369,7 @@
 
                 speakingLock = true;
                 const utterance = new SpeechSynthesisUtterance(text);
-                utterance.voice = googleVoice || speechSynthesis.getVoices()[0];
-                utterance.rate = 1.0; // Adjust rate for clarity
+                utterance.rate = 1.0; // Normal speed for typing
                 utterance.pitch = 1.0;
                 utterance.volume = 1.0;
 
@@ -428,20 +421,43 @@
             status.textContent = `Voice Feedback: ${speechEnabled ? 'ON' : 'OFF'}`;
         }
 
+        // Input event handling
+        const searchInput = document.getElementById('searchInput');
+
+        // Handle text selection
+        searchInput.addEventListener('mouseup', function() {
+            if (this.selectionStart === 0 && this.selectionEnd === this.value.length) {
+                lastValue = '';
+            }
+        });
+
+        searchInput.addEventListener('select', function() {
+            if (this.selectionStart === 0 && this.selectionEnd === this.value.length) {
+                lastValue = '';
+            }
+        });
+
         // Key handling
-        document.getElementById('searchInput').addEventListener('keydown', async function(e) {
+        searchInput.addEventListener('keydown', async function(e) {
             if (!speechEnabled) return;
 
-            if (e.key === 'Delete') {
+            if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
+                // Reset lastValue when Ctrl+A (or Cmd+A on Mac) is pressed
+                lastValue = '';
+            } else if (e.key === 'Delete') {
                 this.value = '';
                 lastValue = '';
                 clearSpeech();
-                await speak('CLEARED');
+                const clearUtterance = new SpeechSynthesisUtterance('CLEARED');
+                clearUtterance.voice = window.ukVoice || googleVoice;
+                speechSynthesis.speak(clearUtterance);
                 e.preventDefault();
             } else if (e.key === 'Backspace' && this.value) {
                 const deletedChar = this.value[this.value.length - 1].toUpperCase();
                 const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
-                await speak(`REMOVED ${deletedPronunciation}`);
+                const utterance = new SpeechSynthesisUtterance(`REMOVED ${deletedPronunciation}`);
+                utterance.voice = window.ukVoice || googleVoice;
+                speechSynthesis.speak(utterance);
             } else if (e.key === 'Enter') {
                 search();
             }
@@ -502,22 +518,29 @@
 
             searchInput.value = '';
             lastValue = '';
+            // Return focus to search input
+            searchInput.focus();
         }
 
-        function repeatSearch() {
+        async function repeatSearch() {
             if (!speechEnabled) return;
-            const searchQuery = document.getElementById('searchInput').value;
+            const searchInput = document.getElementById('searchInput');
+            const searchQuery = searchInput.value;
             if (searchQuery) {
                 clearSpeech();
+                // Move cursor to end of input
+                searchInput.focus();
+                searchInput.setSelectionRange(searchQuery.length, searchQuery.length);
+
+                // Use UK voice for repeat
                 const chars = searchQuery.toUpperCase().split('');
-                chars.reduce((promise, char) => {
-                    return promise.then(() => {
-                        if (pronunciations[char]) {
-                            return speak(pronunciations[char], 0);
-                        }
-                        return Promise.resolve();
-                    });
-                }, Promise.resolve());
+                const utterance = new SpeechSynthesisUtterance(
+                    chars.map(char => pronunciations[char] || char).join(' ')
+                );
+                utterance.voice = window.ukVoice || googleVoice;
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                speechSynthesis.speak(utterance);
             }
         }
 
@@ -703,14 +726,18 @@
                 searchHistory.clear();
                 showResult('Google Sheet loaded successfully!', 'success');
                 clearSpeech();
-                await speak('Sheet loaded');
+                const loadedUtterance = new SpeechSynthesisUtterance('Sheet loaded');
+                loadedUtterance.voice = window.ukVoice || googleVoice;
+                speechSynthesis.speak(loadedUtterance);
                 playNewMatchSound();
                 urlInput.value = '';
 
             } catch (error) {
                 showResult(error.message, 'error');
                 clearSpeech();
-                await speak('Error loading sheet');
+                const errorUtterance = new SpeechSynthesisUtterance('Error loading sheet');
+                errorUtterance.voice = window.ukVoice || googleVoice;
+                speechSynthesis.speak(errorUtterance);
                 playErrorSound();
             }
         }
