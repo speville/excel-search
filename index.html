@@ -224,7 +224,7 @@
                 <div class="search-box">
                     <input type="text"
                            id="searchInput"
-                           placeholder="Type to search... (DEL to remove all text instantly)"
+                           placeholder="Type to search... (DEL to clear)"
                            oninput="handleInput(event)">
                     <button onclick="search()">Search</button>
                     <button onclick="repeatSearch()">Repeat 🔊</button>
@@ -376,7 +376,7 @@
                 speakingLock = true;
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.voice = googleVoice || speechSynthesis.getVoices()[0];
-                utterance.rate = 3;
+                utterance.rate = 4.5;
                 utterance.pitch = 1.0;
                 utterance.volume = 1.0;
 
@@ -384,7 +384,7 @@
                     speakingLock = false;
                     resolve();
                     processQueue();
-                }, Math.max(200, minDelay * 1000));
+                }, Math.max(50, minDelay * 500));
 
                 utterance.onend = () => {
                     clearTimeout(timeoutId);
@@ -513,7 +513,7 @@
                 chars.reduce((promise, char) => {
                     return promise.then(() => {
                         if (pronunciations[char]) {
-                            return speak(pronunciations[char], 0.01);
+                            return speak(pronunciations[char], 0);
                         }
                         return Promise.resolve();
                     });
