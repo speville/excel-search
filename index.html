@@ -513,7 +513,7 @@
                 chars.reduce((promise, char) => {
                     return promise.then(() => {
                         if (pronunciations[char]) {
-                            return speak(pronunciations[char], 0.05);
+                            return speak(pronunciations[char], 0.01);
                         }
                         return Promise.resolve();
                     });
