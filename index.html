@@ -216,8 +216,8 @@
             <h1>Google Sheets Search with Voice</h1>
             <div class="controls">
                 <div class="google-sheets-input">
-                    <input type="text" 
-                           id="sheetsUrl" 
+                    <input type="text"
+                           id="sheetsUrl"
                            placeholder="Paste Google Sheets URL (must be publicly viewable)"
                            oninput="handleSheetUrlInput(event)">
                 </div>
@@ -264,7 +264,7 @@
             try {
                 // Pre-initialize voices
                 speechSynthesis.getVoices();
-                
+
                 // Wait for Chrome voice events
                 if ('onvoiceschanged' in speechSynthesis) {
                     await new Promise(resolve => {
@@ -278,7 +278,7 @@
                 function findBestVoice() {
                     const voices = speechSynthesis.getVoices();
                     console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
-                    
+
                     // Try to find the best voice in order of preference
                     return voices.find(v => v.name === 'Google US English') ||
                            voices.find(v => v.name.includes('Google') && v.lang === 'en-US') ||
@@ -325,10 +325,10 @@
         // Handle input with better character tracking
         async function handleInput(event) {
             if (!speechEnabled || processingInput) return;
-            
+
             processingInput = true;
             const currentValue = event.target.value.toUpperCase();
-            
+
             // Clear any ongoing speech
             clearSpeech();
 
@@ -515,7 +515,6 @@
             }
         }
 
-
         function showResult(message, className) {
             const resultDiv = document.getElementById('result');
             resultDiv.textContent = message;
@@ -610,7 +609,7 @@
         async function loadGoogleSheet() {
             const urlInput = document.getElementById('sheetsUrl');
             const url = urlInput.value.trim();
-            
+
             if (!url) {
                 showResult('Please enter a Google Sheets URL', 'error');
                 playErrorSound();
@@ -621,13 +620,13 @@
             try {
                 const idMatch = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
                 const gidMatch = url.match(/[#&]gid=([0-9]+)/);
-                
+
                 if (idMatch && idMatch[1]) {
                     sheetId = idMatch[1];
                 } else {
                     throw new Error('Invalid Google Sheets URL');
                 }
-                
+
                 gid = gidMatch && gidMatch[1] ? gidMatch[1] : '0';
             } catch (error) {
                 showResult('Invalid Google Sheets URL', 'error');
@@ -647,7 +646,7 @@
                 const jsonString = text.replace(/^[^{]*/, '').replace(/\);$/, '');
                 const jsonData = JSON.parse(jsonString);
 
-                fileData = jsonData.table.rows.map(row => 
+                fileData = jsonData.table.rows.map(row =>
                     row.c.map(cell => cell ? cell.v : '')
                 );
 
@@ -718,4 +717,4 @@
         }
     </script>
 </body>
-</html
+</html>
