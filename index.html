@@ -224,7 +224,7 @@
                 <div class="search-box">
                     <input type="text"
                            id="searchInput"
-                           placeholder="Type to search... (DEL to clear)"
+                           placeholder="Type to search..."
                            oninput="handleInput(event)">
                     <button onclick="search()">Search</button>
                     <button onclick="repeatSearch()">Repeat 🔊</button>
@@ -376,7 +376,7 @@
                 speakingLock = true;
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.voice = googleVoice || speechSynthesis.getVoices()[0];
-                utterance.rate = 4.0;
+                utterance.rate = 1.0; // Adjust rate for clarity
                 utterance.pitch = 1.0;
                 utterance.volume = 1.0;
 
@@ -508,10 +508,16 @@
             if (!speechEnabled) return;
             const searchQuery = document.getElementById('searchInput').value;
             if (searchQuery) {
-            clearSpeech();
-
-            // 🔥 Speak the whole phrase at once instead of character-by-character
-            speak(searchQuery.toUpperCase(), 0);
+                clearSpeech();
+                const chars = searchQuery.toUpperCase().split('');
+                chars.reduce((promise, char) => {
+                    return promise.then(() => {
+                        if (pronunciations[char]) {
+                            return speak(pronunciations[char], 0);
+                        }
+                        return Promise.resolve();
+                    });
+                }, Promise.resolve());
             }
         }
 
