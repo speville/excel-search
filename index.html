@@ -508,18 +508,13 @@
             if (!speechEnabled) return;
             const searchQuery = document.getElementById('searchInput').value;
             if (searchQuery) {
-                clearSpeech();
-                const chars = searchQuery.toUpperCase().split('');
-                chars.reduce((promise, char) => {
-                    return promise.then(() => {
-                        if (pronunciations[char]) {
-                            return speak(pronunciations[char], 0);
-                        }
-                        return Promise.resolve();
-                    });
-                }, Promise.resolve());
+            clearSpeech();
+
+            // 🔥 Speak the whole phrase at once instead of character-by-character
+            speak(searchQuery.toUpperCase(), 0);
             }
         }
+
 
         function showResult(message, className) {
             const resultDiv = document.getElementById('result');
