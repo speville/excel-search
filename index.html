@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excel & Google Sheets Search with Memory</title>
-    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
-    <script src="https://apis.google.com/js/api.js"></script>
+    <title>Google Sheets Search with Voice</title>
     <style>
         * {
             margin: 0;
@@ -49,41 +47,6 @@
             gap: 1rem;
         }
 
-        .input-options {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
-
-        .file-input-wrapper {
-            position: relative;
-            overflow: hidden;
-        }
-
-        input[type="file"] {
-            font-size: 100px;
-            position: absolute;
-            left: 0;
-            top: 0;
-            opacity: 0;
-            cursor: pointer;
-        }
-
-        .file-button {
-            background: #185a34;
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            cursor: pointer;
-            border: none;
-            font-size: 0.9rem;
-            white-space: nowrap;
-        }
-
-        .file-button:hover {
-            background: #134428;
-        }
-
         .google-sheets-input {
             flex: 1;
             display: flex;
@@ -99,6 +62,7 @@
             background: rgba(255,255,255,0.1);
             color: white;
             font-size: 0.9rem;
+            width: 100%;
         }
 
         .google-sheets-input input[type="text"]::placeholder {
@@ -137,14 +101,8 @@
             white-space: nowrap;
         }
 
-        button:hover {
-            background: #134428;
-        }
-
-        button:disabled {
-            background: #666;
-            cursor: not-allowed;
-        }
+        button:hover { background: #134428; }
+        button:disabled { background: #666; cursor: not-allowed; }
 
         #result {
             position: fixed;
@@ -162,21 +120,9 @@
             to { transform: translateX(0); opacity: 1; }
         }
 
-        .success {
-            background: #28a745;
-            color: white;
-            box-shadow: 0 2px 8px rgba(40,167,69,0.2);
-        }
-        .error {
-            background: #dc3545;
-            color: white;
-            box-shadow: 0 2px 8px rgba(220,53,69,0.2);
-        }
-        .repeat {
-            background: #007bff;
-            color: white;
-            box-shadow: 0 2px 8px rgba(0,123,255,0.2);
-        }
+        .success { background: #28a745; color: white; box-shadow: 0 2px 8px rgba(40,167,69,0.2); }
+        .error { background: #dc3545; color: white; box-shadow: 0 2px 8px rgba(220,53,69,0.2); }
+        .repeat { background: #007bff; color: white; box-shadow: 0 2px 8px rgba(0,123,255,0.2); }
 
         .table-container {
             flex: 1;
@@ -185,26 +131,16 @@
             scroll-behavior: smooth;
         }
 
-        .highlight {
-            background-color: #ffeb3b;
-            padding: 2px 0;
-        }
-
-        .row-highlight {
-            background-color: #fff9c4 !important;
-        }
-
         table {
             width: 100%;
             border-collapse: collapse;
             background: white;
         }
 
-        td, th {
+        th, td {
             border: 1px solid #e0e0e0;
             padding: 8px 12px;
             text-align: left;
-            font-size: 0.9rem;
         }
 
         th {
@@ -215,9 +151,7 @@
             z-index: 10;
         }
 
-        tr:hover {
-            background: #f8f9fa;
-        }
+        tr:hover { background: #f8f9fa; }
 
         td {
             white-space: nowrap;
@@ -226,14 +160,35 @@
             max-width: 300px;
         }
 
-        tr td:first-child {
-            position: sticky;
-            left: 0;
-            background: #f8f9fa;
-            font-weight: 500;
-            color: #666;
+        .highlight { background-color: #ffeb3b; padding: 2px 0; }
+        .row-highlight { background-color: #fff9c4 !important; }
+
+        #speechNotification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 1001;
+            display: none;
+            cursor: pointer;
             text-align: center;
-            width: 40px;
+        }
+
+        #speechStatus {
+            position: fixed;
+            bottom: 1rem;
+            left: 1rem;
+            background: #28a745;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            z-index: 1000;
+            display: none;
+            cursor: pointer;
         }
 
         ::-webkit-scrollbar {
@@ -253,53 +208,18 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #a8a8a8;
         }
-
-        #speechNotification {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            z-index: 1001;
-            cursor: pointer;
-            display: none;
-        }
-
-        #speechStatus {
-            position: fixed;
-            bottom: 1rem;
-            left: 1rem;
-            background: #28a745;
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            z-index: 1000;
-            display: none;
-        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Excel & Google Sheets Search with Memory</h1>
+            <h1>Google Sheets Search with Voice</h1>
             <div class="controls">
-                <div class="input-options">
-                    <div class="file-input-wrapper">
-                        <button class="file-button">Choose Excel File</button>
-                        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
-                    </div>
-                    <div class="google-sheets-input">
-                        <input type="text" 
-                               id="sheetsUrl" 
-                               placeholder="Paste Google Sheets URL (must be publicly viewable)">
-                        <button onclick="loadGoogleSheet()">Load Sheet</button>
-                    </div>
+                <div class="google-sheets-input">
+                    <input type="text" 
+                           id="sheetsUrl" 
+                           placeholder="Paste Google Sheets URL (must be publicly viewable)"
+                           oninput="handleSheetUrlInput(event)">
                 </div>
                 <div class="search-box">
                     <input type="text"
@@ -323,111 +243,176 @@
     </div>
 
     <script>
+        // State variables
         let fileData = [];
         let searchHistory = new Set();
         let audioContext = null;
+        let processingInput = false;
+        let speakingLock = false;
+        let lastValue = '';
+        let speakingQueue = [];
+
+        // Audio setup
         const yaySound = new Audio('yay.mp3');
         const ohNoSound = new Audio('oh no.mp3');
-        const synth = window.speechSynthesis;
+        const speechSynthesis = window.speechSynthesis;
         let speechEnabled = false;
-        let lastValue = '';
-        let speechQueue = [];
-        let isProcessingQueue = false;
-        let firstInputAfterDelete = false;
+        let googleVoice = null;
 
+        // Initialize Chrome voice synthesis immediately
+        (async function initializeVoices() {
+            try {
+                // Pre-initialize voices
+                speechSynthesis.getVoices();
+                
+                // Wait for Chrome voice events
+                if ('onvoiceschanged' in speechSynthesis) {
+                    await new Promise(resolve => {
+                        speechSynthesis.onvoiceschanged = resolve;
+                    });
+                }
+
+                // Additional wait to ensure voices are loaded
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                function findBestVoice() {
+                    const voices = speechSynthesis.getVoices();
+                    console.log('Available voices:', voices.map(v => `${v.name} (${v.lang})`));
+                    
+                    // Try to find the best voice in order of preference
+                    return voices.find(v => v.name === 'Google US English') ||
+                           voices.find(v => v.name.includes('Google') && v.lang === 'en-US') ||
+                           voices.find(v => v.name.includes('English') && v.lang === 'en-US') ||
+                           voices.find(v => v.lang === 'en-US') ||
+                           voices[0];
+                }
+
+                // Try to get and test the voice
+                googleVoice = findBestVoice();
+                if (googleVoice) {
+                    console.log('Voice selected:', googleVoice.name);
+                    const test = new SpeechSynthesisUtterance('');
+                    test.voice = googleVoice;
+                    test.volume = 0;
+                    speechSynthesis.speak(test);
+                }
+
+                document.getElementById('speechNotification').style.display = 'block';
+            } catch (error) {
+                console.error('Voice initialization error:', error);
+            }
+        })();
+
+        // Enable speech on first interaction
+        document.addEventListener('click', () => {
+            if (!speechEnabled) {
+                console.log('Enabling speech with voice:', googleVoice?.name);
+                enableSpeech();
+            }
+        }, { once: true });
+
+        // Pronunciations map
         const pronunciations = {
-            '1': 'one',
-            '2': 'two',
-            '3': 'three',
-            '4': 'four',
-            '5': 'five',
-            '6': 'six',
-            '7': 'seven',
-            '8': 'eight',
-            '9': 'nine',
-            '0': 'zero',
-            'A': 'A',
-            'B': 'B',
-            'C': 'C',
-            'D': 'D',
-            'E': 'E',
-            'F': 'F',
-            'G': 'G',
-            'H': 'H',
-            'I': 'I',
-            'J': 'J',
-            'K': 'K',
-            'L': 'L',
-            'M': 'M',
-            'N': 'N',
-            'O': 'O',
-            'P': 'P',
-            'Q': 'Q',
-            'R': 'R',
-            'S': 'S',
-            'T': 'T',
-            'U': 'U',
-            'V': 'V',
-            'W': 'W',
-            'X': 'X',
-            'Y': 'Y',
-            'Z': 'Z'
+            '1': 'one', '2': 'two', '3': 'three', '4': 'four', '5': 'five',
+            '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine', '0': 'zero',
+            'A': 'A', 'B': 'B', 'C': 'C', 'D': 'D', 'E': 'E', 'F': 'F',
+            'G': 'G', 'H': 'H', 'I': 'I', 'J': 'J', 'K': 'K', 'L': 'L',
+            'M': 'M', 'N': 'N', 'O': 'O', 'P': 'P', 'Q': 'Q', 'R': 'R',
+            'S': 'S', 'T': 'T', 'U': 'U', 'V': 'V', 'W': 'W', 'X': 'X',
+            'Y': 'Y', 'Z': 'Z'
         };
 
-        function speakNext() {
-            if (speechQueue.length === 0 || isProcessingQueue) return;
-
-            isProcessingQueue = true;
-            const text = speechQueue.shift();
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.voice = synth.getVoices().find(voice => voice.lang === 'en-US' && voice.name.includes('Google')) || synth.getVoices()[0];
-            utterance.rate = 1.0;
-            utterance.pitch = 1.0;
-            utterance.volume = 0.9;
-
-            utterance.onend = () => {
-                isProcessingQueue = false;
-                if (speechQueue.length > 0) {
-                    setTimeout(() => speakNext(), 15);
-                }
-            };
-
-            synth.speak(utterance);
-        }
-
-        function queueSpeech(text) {
-            if (!speechEnabled) return;
-
-            speechQueue.push(text);
-            if (!isProcessingQueue) speakNext();
-        }
-
-        function handleInput(event) {
-            if (!speechEnabled) return;
+        // Handle input with better character tracking
+        async function handleInput(event) {
+            if (!speechEnabled || processingInput) return;
+            
+            processingInput = true;
             const currentValue = event.target.value.toUpperCase();
-            const newChars = currentValue.length > lastValue.length
-                ? currentValue.slice(lastValue.length)
-                : '';
+            
+            // Clear any ongoing speech
+            clearSpeech();
 
-            if (newChars.length > 0) {
-                if (firstInputAfterDelete) {
-                    firstInputAfterDelete = false;
+            try {
+                // Handle text replacement (paste/selection)
+                if (!currentValue.startsWith(lastValue) && !lastValue.startsWith(currentValue)) {
+                    // Speak all characters
+                    for (const char of currentValue) {
+                        if (pronunciations[char]) {
+                            await speak(pronunciations[char], 0.05);
+                        }
+                    }
+                } else {
+                    // Handle normal typing
+                    const newChars = currentValue.slice(lastValue.length);
+                    for (const char of newChars) {
+                        if (pronunciations[char]) {
+                            await speak(pronunciations[char], 0.05);
+                        }
+                    }
+                }
+            } finally {
+                lastValue = currentValue;
+                processingInput = false;
+            }
+        }
+
+        // Clear ongoing speech
+        function clearSpeech() {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+            }
+            speakingLock = false;
+            speakingQueue = [];
+        }
+
+        // Speak text with guaranteed timing
+        function speak(text, minDelay = 0) {
+            return new Promise(resolve => {
+                if (speakingLock) {
+                    speakingQueue.push({ text, minDelay, resolve });
+                    return;
                 }
 
-                newChars.split('').forEach(char => queueSpeech(pronunciations[char] || char));
+                speakingLock = true;
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.voice = googleVoice || speechSynthesis.getVoices()[0];
+                utterance.rate = 2.5;
+                utterance.pitch = 1.0;
+                utterance.volume = 1.0;
+
+                let timeoutId = setTimeout(() => {
+                    speakingLock = false;
+                    resolve();
+                    processQueue();
+                }, Math.max(200, minDelay * 1000));
+
+                utterance.onend = () => {
+                    clearTimeout(timeoutId);
+                    speakingLock = false;
+                    resolve();
+                    processQueue();
+                };
+
+                utterance.onerror = () => {
+                    clearTimeout(timeoutId);
+                    speakingLock = false;
+                    resolve();
+                    processQueue();
+                };
+
+                speechSynthesis.speak(utterance);
+            });
+        }
+
+        // Process queued speech
+        function processQueue() {
+            if (speakingQueue.length > 0 && !speakingLock) {
+                const { text, minDelay, resolve } = speakingQueue.shift();
+                speak(text, minDelay).then(resolve);
             }
-
-            lastValue = currentValue;
         }
 
-        function clearSpeechQueue() {
-            synth.cancel();
-            speechQueue = [];
-            isProcessingQueue = false;
-            lastValue = '';
-            firstInputAfterDelete = true;
-        }
-
+        // Speech control functions
         function enableSpeech() {
             speechEnabled = true;
             document.getElementById('speechNotification').style.display = 'none';
@@ -438,272 +423,33 @@
 
         function toggleSpeech() {
             speechEnabled = !speechEnabled;
-            synth.cancel();
-            speechQueue = [];
-            isProcessingQueue = false;
+            clearSpeech();
             const status = document.getElementById('speechStatus');
             status.textContent = `Voice Feedback: ${speechEnabled ? 'ON' : 'OFF'}`;
         }
 
-        function repeatSearch() {
-            const searchInput = document.getElementById('searchInput');
-            const searchQuery = searchInput.value;
-            if (searchQuery) {
-                const digitByDigit = searchQuery.split('').map(char => pronunciations[char] || char).join(' ');
-                queueSpeech(digitByDigit);
-            }
-        }
+        // Key handling
+        document.getElementById('searchInput').addEventListener('keydown', async function(e) {
+            if (!speechEnabled) return;
 
-        window.addEventListener('load', () => {
-            synth.speak(new SpeechSynthesisUtterance(''));
-            document.getElementById('speechNotification').style.display = 'block';
-            document.addEventListener('click', enableSpeech, { once: true });
-        });
-
-        function initAudio() {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-        }
-
-        function playErrorSound() {
-            initAudio();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-
-            oscillator.type = 'square';
-            oscillator.frequency.value = 150;
-
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.3);
-
-            setTimeout(() => {
-                const osc2 = audioContext.createOscillator();
-                const gain2 = audioContext.createGain();
-
-                osc2.connect(gain2);
-                gain2.connect(audioContext.destination);
-
-                osc2.type = 'square';
-                osc2.frequency.value = 100;
-
-                gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
-                gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-
-                osc2.start(audioContext.currentTime);
-                osc2.stop(audioContext.currentTime + 0.3);
-            }, 100);
-        }
-
-        function playRepeatedMatchSound() {
-            initAudio();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-
-            oscillator.type = 'square';
-
-            let time = audioContext.currentTime;
-            const duration = 0.8;
-            const freq1 = 800;
-            const freq2 = 600;
-
-            oscillator.frequency.setValueAtTime(freq1, time);
-            oscillator.frequency.setValueAtTime(freq2, time + 0.2);
-            oscillator.frequency.setValueAtTime(freq1, time + 0.4);
-            oscillator.frequency.setValueAtTime(freq2, time + 0.6);
-
-            gainNode.gain.setValueAtTime(0.2, time);
-            gainNode.gain.setValueAtTime(0.2, time + 0.2);
-            gainNode.gain.setValueAtTime(0.2, time + 0.4);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, time + duration);
-
-            oscillator.start(time);
-            oscillator.stop(time + duration);
-        }
-
-        function playNewMatchSound() {
-            yaySound.currentTime = 0;
-            yaySound.play();
-        }
-
-        function showResult(message, className) {
-            const resultDiv = document.getElementById('result');
-            resultDiv.textContent = message;
-            resultDiv.className = className;
-
-            setTimeout(() => {
-                resultDiv.style.opacity = '0';
-                setTimeout(() => {
-                    resultDiv.textContent = '';
-                    resultDiv.className = '';
-                    resultDiv.style.opacity = '1';
-                }, 300);
-            }, 3000);
-        }
-
-        function highlightText(text, query) {
-            const lowerText = text.toLowerCase();
-            const lowerQuery = query.toLowerCase();
-            const index = lowerText.indexOf(lowerQuery);
-
-            if (index === -1) return text;
-
-            return text.slice(0, index) +
-                   `<span class="highlight">${text.slice(index, index + query.length)}</span>` +
-                   text.slice(index + query.length);
-        }
-
-        document.getElementById('searchInput').addEventListener('keydown', function(e) {
-            if (e.key === 'Delete' && speechEnabled) {
+            if (e.key === 'Delete') {
                 this.value = '';
-                clearSpeechQueue();
-                queueSpeech('CLEARED');
+                lastValue = '';
+                clearSpeech();
+                await speak('CLEARED');
                 e.preventDefault();
-            } else if (e.key === 'Backspace' && speechEnabled && this.value) {
+            } else if (e.key === 'Backspace' && this.value) {
                 const deletedChar = this.value[this.value.length - 1].toUpperCase();
                 const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
-                queueSpeech(`REMOVED ${deletedPronunciation}`);
+                await speak(`REMOVED ${deletedPronunciation}`);
             } else if (e.key === 'Enter') {
                 search();
             }
         });
 
-        async function loadGoogleSheet() {
-            const urlInput = document.getElementById('sheetsUrl');
-            const url = urlInput.value.trim();
-            
-            if (!url) {
-                showResult('Please enter a Google Sheets URL', 'error');
-                playErrorSound();
-                return;
-            }
-
-            // Extract the sheet ID and GID from the URL
-            let sheetId, gid;
-            try {
-                const idMatch = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-                const gidMatch = url.match(/[#&]gid=([0-9]+)/);
-                
-                if (idMatch && idMatch[1]) {
-                    sheetId = idMatch[1];
-                } else {
-                    throw new Error('Invalid Google Sheets URL');
-                }
-                
-                if (gidMatch && gidMatch[1]) {
-                    gid = gidMatch[1];
-                }
-            } catch (error) {
-                showResult('Invalid Google Sheets URL', 'error');
-                playErrorSound();
-                return;
-            }
-
-            // Construct the export URL with GID if available
-            const exportUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx${gid ? '&gid=' + gid : ''}`;
-
-            try {
-                const response = await fetch(exportUrl);
-                if (!response.ok) {
-                    throw new Error('Failed to access the spreadsheet. Make sure it\'s publicly viewable.');
-                }
-
-                const blob = await response.blob();
-                const reader = new FileReader();
-
-                reader.onload = function(e) {
-                    try {
-                        const data = new Uint8Array(e.target.result);
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        const firstSheetName = workbook.SheetNames[0];
-                        const worksheet = workbook.Sheets[firstSheetName];
-                        fileData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-                        const table = document.createElement('table');
-
-                        const headerRow = document.createElement('tr');
-                        const cornerCell = document.createElement('th');
-                        headerRow.appendChild(cornerCell);
-
-                        const maxCols = Math.max(...fileData.map(row => row.length));
-                        for (let i = 0; i < maxCols; i++) {
-                            const th = document.createElement('th');
-                            th.textContent = String.fromCharCode(65 + i);
-                            headerRow.appendChild(th);
-                        }
-                        table.appendChild(headerRow);
-
-                        fileData.forEach((row, rowIndex) => {
-                            const tr = document.createElement('tr');
-                            tr.setAttribute('data-row', rowIndex + 1);
-
-                            const rowNum = document.createElement('td');
-                            rowNum.textContent = rowIndex + 1;
-                            tr.appendChild(rowNum);
-
-                            row.forEach((cellData, colIndex) => {
-                                const td = document.createElement('td');
-                                if (typeof cellData === 'object' && cellData !== null) {
-                                    // Handle cell object with potential hyperlink
-                                    if (cellData.hasOwnProperty('v')) {
-                                        if (cellData.hasOwnProperty('h')) {
-                                            // Cell has hyperlink
-                                            const a = document.createElement('a');
-                                            a.href = cellData.h;
-                                            a.textContent = cellData.v;
-                                            a.target = "_blank";
-                                            td.appendChild(a);
-                                        } else {
-                                            td.textContent = cellData.v;
-                                        }
-                                    }
-                                } else {
-                                    td.textContent = cellData || '';
-                                }
-                                tr.appendChild(td);
-                            });
-
-                            for (let i = row.length; i < maxCols; i++) {
-                                const td = document.createElement('td');
-                                tr.appendChild(td);
-                            }
-
-                            table.appendChild(tr);
-                        });
-
-                        document.getElementById('fileContent').innerHTML = '';
-                        document.getElementById('fileContent').appendChild(table);
-                        searchHistory.clear();
-                        showResult('Google Sheet loaded successfully!', 'success');
-                        playNewMatchSound();
-                        urlInput.value = '';
-                    } catch (error) {
-                        showResult('Error processing spreadsheet: ' + error.message, 'error');
-                        playErrorSound();
-                    }
-                };
-
-                reader.readAsArrayBuffer(blob);
-            } catch (error) {
-                showResult(error.message, 'error');
-                playErrorSound();
-            }
-        }
-
+        // Search functionality
         function search() {
-            synth.cancel();
-            speechQueue = [];
-            isProcessingQueue = false;
-            firstInputAfterDelete = true;
+            clearSpeech();
 
             const searchInput = document.getElementById('searchInput');
             const searchQuery = searchInput.value.toLowerCase();
@@ -723,19 +469,13 @@
             const rows = document.querySelectorAll('table tr');
             rows.forEach((row, rowIndex) => {
                 if (rowIndex === 0) return;
-
                 const cells = row.querySelectorAll('td');
-                let rowHasMatch = false;
-
-                cells.forEach((cell, cellIndex) => {
-                    if (cellIndex === 0) return;
-
+                cells.forEach(cell => {
                     const cellText = cell.textContent;
                     if (cellText.toLowerCase().includes(searchQuery)) {
                         cell.innerHTML = highlightText(cellText, searchQuery);
                         row.classList.add('row-highlight');
                         found = true;
-                        rowHasMatch = true;
                         if (!firstMatch) firstMatch = row;
                     }
                 });
@@ -764,87 +504,223 @@
             lastValue = '';
         }
 
-        document.getElementById('fileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
+        function repeatSearch() {
+            if (!speechEnabled) return;
+            const searchQuery = document.getElementById('searchInput').value;
+            if (searchQuery) {
+                clearSpeech();
+                const chars = searchQuery.toUpperCase().split('');
+                chars.reduce((promise, char) => {
+                    return promise.then(() => {
+                        if (pronunciations[char]) {
+                            return speak(pronunciations[char], 0.1);
+                        }
+                        return Promise.resolve();
+                    });
+                }, Promise.resolve());
+            }
+        }
 
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
-                    fileData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        function showResult(message, className) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.textContent = message;
+            resultDiv.className = className;
+            setTimeout(() => {
+                resultDiv.style.opacity = '0';
+                setTimeout(() => {
+                    resultDiv.textContent = '';
+                    resultDiv.className = '';
+                    resultDiv.style.opacity = '1';
+                }, 300);
+            }, 3000);
+        }
 
-                    const table = document.createElement('table');
+        function highlightText(text, query) {
+            const lowerText = text.toLowerCase();
+            const lowerQuery = query.toLowerCase();
+            const index = lowerText.indexOf(lowerQuery);
+            if (index === -1) return text;
+            return text.slice(0, index) +
+                `<span class="highlight">${text.slice(index, index + query.length)}</span>` +
+                text.slice(index + query.length);
+        }
 
-                    const headerRow = document.createElement('tr');
-                    const cornerCell = document.createElement('th');
-                    headerRow.appendChild(cornerCell);
+        // Sound effects
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
 
-                    const maxCols = Math.max(...fileData.map(row => row.length));
-                    for (let i = 0; i < maxCols; i++) {
-                        const th = document.createElement('th');
-                        th.textContent = String.fromCharCode(65 + i);
-                        headerRow.appendChild(th);
-                    }
-                    table.appendChild(headerRow);
+        function playNewMatchSound() {
+            yaySound.currentTime = 0;
+            yaySound.play();
+        }
 
-                    fileData.forEach((row, rowIndex) => {
-                        const tr = document.createElement('tr');
-                        tr.setAttribute('data-row', rowIndex + 1);
+        function playErrorSound() {
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
 
-                        const rowNum = document.createElement('td');
-                        rowNum.textContent = rowIndex + 1;
-                        tr.appendChild(rowNum);
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
 
-                row.forEach((cellData, colIndex) => {
-                    const td = document.createElement('td');
-                    if (typeof cellData === 'object' && cellData !== null) {
-                        // Handle cell object with potential hyperlink
-                        if (cellData.hasOwnProperty('v')) {
-                            if (cellData.hasOwnProperty('h')) {
-                                // Cell has hyperlink
-                                const a = document.createElement('a');
-                                a.href = cellData.h;
-                                a.textContent = cellData.v;
-                                a.target = "_blank";
-                                td.appendChild(a);
-                            } else {
-                                td.textContent = cellData.v;
+            oscillator.type = 'square';
+            oscillator.frequency.value = 150;
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+
+            setTimeout(() => {
+                const osc2 = audioContext.createOscillator();
+                const gain2 = audioContext.createGain();
+                osc2.connect(gain2);
+                gain2.connect(audioContext.destination);
+                osc2.type = 'square';
+                osc2.frequency.value = 100;
+                gain2.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                osc2.start(audioContext.currentTime);
+                osc2.stop(audioContext.currentTime + 0.3);
+            }, 100);
+        }
+
+        function playRepeatedMatchSound() {
+            initAudio();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator.type = 'square';
+
+            let time = audioContext.currentTime;
+            oscillator.frequency.setValueAtTime(800, time);
+            oscillator.frequency.setValueAtTime(600, time + 0.2);
+            oscillator.frequency.setValueAtTime(800, time + 0.4);
+            oscillator.frequency.setValueAtTime(600, time + 0.6);
+
+            gainNode.gain.setValueAtTime(0.2, time);
+            gainNode.gain.setValueAtTime(0.2, time + 0.2);
+            gainNode.gain.setValueAtTime(0.2, time + 0.4);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, time + 0.8);
+
+            oscillator.start(time);
+            oscillator.stop(time + 0.8);
+        }
+
+        // Google Sheets handling
+        async function loadGoogleSheet() {
+            const urlInput = document.getElementById('sheetsUrl');
+            const url = urlInput.value.trim();
+            
+            if (!url) {
+                showResult('Please enter a Google Sheets URL', 'error');
+                playErrorSound();
+                return;
+            }
+
+            let sheetId, gid;
+            try {
+                const idMatch = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+                const gidMatch = url.match(/[#&]gid=([0-9]+)/);
+                
+                if (idMatch && idMatch[1]) {
+                    sheetId = idMatch[1];
+                } else {
+                    throw new Error('Invalid Google Sheets URL');
+                }
+                
+                gid = gidMatch && gidMatch[1] ? gidMatch[1] : '0';
+            } catch (error) {
+                showResult('Invalid Google Sheets URL', 'error');
+                playErrorSound();
+                return;
+            }
+
+            const gvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${gid}`;
+
+            try {
+                const response = await fetch(gvizUrl);
+                if (!response.ok) {
+                    throw new Error('Failed to access the spreadsheet. Make sure it\'s publicly viewable.');
+                }
+
+                const text = await response.text();
+                const jsonString = text.replace(/^[^{]*/, '').replace(/\);$/, '');
+                const jsonData = JSON.parse(jsonString);
+
+                fileData = jsonData.table.rows.map(row => 
+                    row.c.map(cell => cell ? cell.v : '')
+                );
+
+                const table = document.createElement('table');
+                const headerRow = document.createElement('tr');
+
+                const maxCols = Math.max(...fileData.map(row => row.length));
+                for (let i = 1; i < maxCols; i++) {
+                    const th = document.createElement('th');
+                    th.textContent = String.fromCharCode(65 + i);
+                    headerRow.appendChild(th);
+                }
+                table.appendChild(headerRow);
+
+                fileData.forEach((row, rowIndex) => {
+                    const tr = document.createElement('tr');
+                    tr.setAttribute('data-row', rowIndex + 1);
+
+                    row.slice(1).forEach(cellData => {
+                        const td = document.createElement('td');
+                        if (typeof cellData === 'object' && cellData !== null) {
+                            if (cellData.hasOwnProperty('v')) {
+                                if (cellData.hasOwnProperty('h')) {
+                                    const a = document.createElement('a');
+                                    a.href = cellData.h;
+                                    a.textContent = cellData.v;
+                                    a.target = "_blank";
+                                    td.appendChild(a);
+                                } else {
+                                    td.textContent = cellData.v;
+                                }
                             }
+                        } else {
+                            td.textContent = cellData || '';
                         }
-                    } else {
-                        td.textContent = cellData || '';
-                    }
-                    tr.appendChild(td);
-                        });
-
-                        for (let i = row.length; i < maxCols; i++) {
-                            const td = document.createElement('td');
-                            tr.appendChild(td);
-                        }
-
-                        table.appendChild(tr);
+                        tr.appendChild(td);
                     });
 
-                    document.getElementById('fileContent').innerHTML = '';
-                    document.getElementById('fileContent').appendChild(table);
-                    searchHistory.clear();
-                } catch (error) {
-                    showResult('Error reading Excel file: ' + error.message, 'error');
-                    playErrorSound();
-                }
-            };
+                    for (let i = row.length; i < maxCols; i++) {
+                        tr.appendChild(document.createElement('td'));
+                    }
 
-            reader.readAsArrayBuffer(file);
-        });
+                    table.appendChild(tr);
+                });
 
-        document.getElementById('searchInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                search();
+                document.getElementById('fileContent').innerHTML = '';
+                document.getElementById('fileContent').appendChild(table);
+                searchHistory.clear();
+                showResult('Google Sheet loaded successfully!', 'success');
+                clearSpeech();
+                await speak('Sheet loaded');
+                playNewMatchSound();
+                urlInput.value = '';
+
+            } catch (error) {
+                showResult(error.message, 'error');
+                clearSpeech();
+                await speak('Error loading sheet');
+                playErrorSound();
             }
-        });
+        }
+
+        function handleSheetUrlInput(event) {
+            const url = event.target.value.trim();
+            if (url.includes('docs.google.com/spreadsheets')) {
+                loadGoogleSheet();
+            }
+        }
     </script>
 </body>
-</html>
+</html
