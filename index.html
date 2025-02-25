@@ -189,6 +189,11 @@
             z-index: 1000;
             display: none;
             cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #speechStatus.off {
+            background: #dc3545;
         }
 
         ::-webkit-scrollbar {
@@ -412,6 +417,7 @@
             const status = document.getElementById('speechStatus');
             status.style.display = 'block';
             status.textContent = 'Voice Feedback: ON';
+            status.classList.remove('off');
         }
 
         function toggleSpeech() {
@@ -419,6 +425,7 @@
             clearSpeech();
             const status = document.getElementById('speechStatus');
             status.textContent = `Voice Feedback: ${speechEnabled ? 'ON' : 'OFF'}`;
+            status.classList.toggle('off', !speechEnabled);
         }
 
         // Input event handling
@@ -523,7 +530,6 @@
         }
 
         async function repeatSearch() {
-            if (!speechEnabled) return;
             const searchInput = document.getElementById('searchInput');
             const searchQuery = searchInput.value;
             if (searchQuery) {
@@ -675,26 +681,31 @@
                 const jsonString = text.replace(/^[^{]*/, '').replace(/\);$/, '');
                 const jsonData = JSON.parse(jsonString);
 
+                // Get column labels from cols array which contains the actual headers (skip first column)
+                const headers = jsonData.table.cols.slice(1).map(col => col.label || '');
+                
+                // Map the data rows (skip first column)
                 fileData = jsonData.table.rows.map(row =>
-                    row.c.map(cell => cell ? cell.v : '')
+                    row.c.slice(1).map(cell => cell ? cell.v : '')
                 );
 
                 const table = document.createElement('table');
                 const headerRow = document.createElement('tr');
 
-                const maxCols = Math.max(...fileData.map(row => row.length));
-                for (let i = 1; i < maxCols; i++) {
+                // Add headers from cols (already skipped first column)
+                headers.forEach(header => {
                     const th = document.createElement('th');
-                    th.textContent = String.fromCharCode(65 + i);
+                    th.textContent = header || '';
                     headerRow.appendChild(th);
-                }
+                });
                 table.appendChild(headerRow);
 
-                fileData.forEach((row, rowIndex) => {
+                // Start from index 1 to skip header row
+                fileData.slice(1).forEach((row, rowIndex) => {
                     const tr = document.createElement('tr');
-                    tr.setAttribute('data-row', rowIndex + 1);
+                    tr.setAttribute('data-row', rowIndex + 2); // +2 because we skip header and 0-based index
 
-                    row.slice(1).forEach(cellData => {
+                    row.forEach(cellData => {
                         const td = document.createElement('td');
                         if (typeof cellData === 'object' && cellData !== null) {
                             if (cellData.hasOwnProperty('v')) {
@@ -713,10 +724,6 @@
                         }
                         tr.appendChild(td);
                     });
-
-                    for (let i = row.length; i < maxCols; i++) {
-                        tr.appendChild(document.createElement('td'));
-                    }
 
                     table.appendChild(tr);
                 });
