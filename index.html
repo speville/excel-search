@@ -455,6 +455,10 @@
                 clearUtterance.voice = window.ukVoice || googleVoice;
                 speechSynthesis.speak(clearUtterance);
                 e.preventDefault();
+            } else if (e.key === '+') {
+                // Trigger repeat search when "+" is pressed
+                repeatSearch();
+                e.preventDefault();
             } else if (!speechEnabled) {
                 return;
             } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
@@ -682,7 +686,7 @@
                 }
 
                 const text = await response.text();
-                const jsonString = text.replace(/^[^{]*/, '').replace(/\);$/, '');
+                const jsonString = text.replace(/^[^{]*/, '').replace(/\);\$/, '');
                 const jsonData = JSON.parse(jsonString);
 
                 // Get column labels from cols array which contains the actual headers (skip first column)
@@ -735,30 +739,4 @@
                 document.getElementById('fileContent').innerHTML = '';
                 document.getElementById('fileContent').appendChild(table);
                 searchHistory.clear();
-                showResult('Google Sheet loaded successfully!', 'success');
-                clearSpeech();
-                const loadedUtterance = new SpeechSynthesisUtterance('Sheet loaded');
-                loadedUtterance.voice = window.ukVoice || googleVoice;
-                speechSynthesis.speak(loadedUtterance);
-                playNewMatchSound();
-                urlInput.value = '';
-
-            } catch (error) {
-                showResult(error.message, 'error');
-                clearSpeech();
-                const errorUtterance = new SpeechSynthesisUtterance('Error loading sheet');
-                errorUtterance.voice = window.ukVoice || googleVoice;
-                speechSynthesis.speak(errorUtterance);
-                playErrorSound();
-            }
-        }
-
-        function handleSheetUrlInput(event) {
-            const url = event.target.value.trim();
-            if (url.includes('docs.google.com/spreadsheets')) {
-                loadGoogleSheet();
-            }
-        }
-    </script>
-</body>
-</html>
+                showResult('Google Sheet loaded succ
