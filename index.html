@@ -452,8 +452,8 @@
                 // Reset lastValue when Ctrl+A (or Cmd+A on Mac) is pressed
                 lastValue = '';
             } else if (e.key === 'Delete' || e.key === 'Backspace') {
-                if ((e.key === 'Delete' || e.key === 'Backspace') && this.value) {
-                    const deletedChar = this.value[this.selectionStart].toUpperCase();
+                if (this.value) {
+                    const deletedChar = this.value[this.selectionStart - 1].toUpperCase();
                     const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
                     const utterance = new SpeechSynthesisUtterance(`REMOVED ${deletedPronunciation}`);
                     utterance.voice = window.ukVoice || googleVoice;
@@ -461,6 +461,15 @@
                 }
             } else if (e.key === 'Enter') {
                 search();
+            } else if (e.key === ',' && (e.ctrlKey || e.metaKey)) {
+                // Handle Cmd+Backspace (or Ctrl+Backspace) to clear input
+                this.value = '';
+                lastValue = '';
+                clearSpeech();
+                const clearUtterance = new SpeechSynthesisUtterance('CLEARED');
+                clearUtterance.voice = window.ukVoice || googleVoice;
+                speechSynthesis.speak(clearUtterance);
+                e.preventDefault();
             }
         });
 
@@ -524,6 +533,7 @@
         }
 
         async function repeatSearch() {
+            if (!speechEnabled) return;
             const searchInput = document.getElementById('searchInput');
             const searchQuery = searchInput.value;
             if (searchQuery) {
