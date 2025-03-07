@@ -446,9 +446,18 @@
 
         // Key handling
         searchInput.addEventListener('keydown', async function(e) {
-            if (!speechEnabled) return;
-
-            if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
+            if (e.key === ',') {
+                // Clear the search input when comma is pressed
+                this.value = '';
+                lastValue = '';
+                clearSpeech();
+                const clearUtterance = new SpeechSynthesisUtterance('CLEARED');
+                clearUtterance.voice = window.ukVoice || googleVoice;
+                speechSynthesis.speak(clearUtterance);
+                e.preventDefault();
+            } else if (!speechEnabled) {
+                return;
+            } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
                 // Reset lastValue when Ctrl+A (or Cmd+A on Mac) is pressed
                 lastValue = '';
             } else if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -461,15 +470,6 @@
                 }
             } else if (e.key === 'Enter') {
                 search();
-            } else if (e.key === ',') {
-                // Clear the search input when comma is pressed
-                this.value = '';
-                lastValue = '';
-                clearSpeech();
-                const clearUtterance = new SpeechSynthesisUtterance('CLEARED');
-                clearUtterance.voice = window.ukVoice || googleVoice;
-                speechSynthesis.speak(clearUtterance);
-                e.preventDefault();
             }
         });
 
