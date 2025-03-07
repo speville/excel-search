@@ -452,14 +452,8 @@
                 // Reset lastValue when Ctrl+A (or Cmd+A on Mac) is pressed
                 lastValue = '';
             } else if (e.key === 'Delete' || e.key === 'Backspace') {
-                if (e.key === 'Delete' && this.value) {
+                if ((e.key === 'Delete' || e.key === 'Backspace') && this.value) {
                     const deletedChar = this.value[this.selectionStart].toUpperCase();
-                    const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
-                    const utterance = new SpeechSynthesisUtterance(`REMOVED ${deletedPronunciation}`);
-                    utterance.voice = window.ukVoice || googleVoice;
-                    speechSynthesis.speak(utterance);
-                } else if (e.key === 'Backspace' && this.value) {
-                    const deletedChar = this.value[this.selectionStart - 1].toUpperCase();
                     const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
                     const utterance = new SpeechSynthesisUtterance(`REMOVED ${deletedPronunciation}`);
                     utterance.voice = window.ukVoice || googleVoice;
