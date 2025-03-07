@@ -459,8 +459,6 @@
                 // Repeat the number when "+" is pressed
                 repeatSearch();
                 e.preventDefault();
-            } else if (!speechEnabled) {
-                return;
             } else if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
                 // Reset lastValue when Ctrl+A (or Cmd+A on Mac) is pressed
                 lastValue = '';
@@ -537,7 +535,6 @@
         }
 
         async function repeatSearch() {
-            if (!speechEnabled) return;
             const searchInput = document.getElementById('searchInput');
             const searchQuery = searchInput.value;
             if (searchQuery) {
