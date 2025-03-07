@@ -271,7 +271,7 @@
                 speechSynthesis.onvoiceschanged = function() {
                     const voices = speechSynthesis.getVoices();
                     console.log('Available voices:', voices.map(v => v.name));
-                    
+
                     // Get US female voice for normal typing
                     googleVoice = voices.find(v => v.name === 'Google US English Female') ||
                                 voices.find(v => v.name === 'Google US English') ||
@@ -282,11 +282,11 @@
                     window.ukVoice = voices.find(v => v.name === 'Google UK English Female') ||
                                    voices.find(v => v.lang === 'en-GB') ||
                                    googleVoice; // Fallback to same voice as typing
-                    
+
                     console.log('US Voice:', googleVoice?.name);
                     console.log('UK Voice:', window.ukVoice?.name);
                 };
-                
+
                 // Initial voice load attempt
                 speechSynthesis.getVoices();
 
@@ -321,7 +321,7 @@
 
             processingInput = true;
             const currentValue = event.target.value.toUpperCase();
-            
+
             clearSpeech();
 
             // Get the current selection
@@ -336,21 +336,21 @@
 
             // Determine which characters to speak
             const newChars = lastValue === '' ? currentValue : currentValue.slice(lastValue.length);
-            
+
             // Create a single utterance with all new characters
             const newPronunciations = newChars
                 .split('')
                 .filter(char => pronunciations[char])
                 .map(char => pronunciations[char])
                 .join(' ');
-            
+
             if (newPronunciations) {
                 const utterance = new SpeechSynthesisUtterance(newPronunciations);
                 utterance.voice = googleVoice;
                 utterance.rate = 1.0;
                 speechSynthesis.speak(utterance);
             }
-            
+
             lastValue = currentValue;
             processingInput = false;
         }
@@ -451,20 +451,20 @@
             if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
                 // Reset lastValue when Ctrl+A (or Cmd+A on Mac) is pressed
                 lastValue = '';
-            } else if (e.key === 'Delete') {
-                this.value = '';
-                lastValue = '';
-                clearSpeech();
-                const clearUtterance = new SpeechSynthesisUtterance('CLEARED');
-                clearUtterance.voice = window.ukVoice || googleVoice;
-                speechSynthesis.speak(clearUtterance);
-                e.preventDefault();
-            } else if (e.key === 'Backspace' && this.value) {
-                const deletedChar = this.value[this.value.length - 1].toUpperCase();
-                const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
-                const utterance = new SpeechSynthesisUtterance(`REMOVED ${deletedPronunciation}`);
-                utterance.voice = window.ukVoice || googleVoice;
-                speechSynthesis.speak(utterance);
+            } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (e.key === 'Delete' && this.value) {
+                    const deletedChar = this.value[this.selectionStart].toUpperCase();
+                    const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
+                    const utterance = new SpeechSynthesisUtterance(`REMOVED ${deletedPronunciation}`);
+                    utterance.voice = window.ukVoice || googleVoice;
+                    speechSynthesis.speak(utterance);
+                } else if (e.key === 'Backspace' && this.value) {
+                    const deletedChar = this.value[this.selectionStart - 1].toUpperCase();
+                    const deletedPronunciation = pronunciations[deletedChar] || deletedChar;
+                    const utterance = new SpeechSynthesisUtterance(`REMOVED ${deletedPronunciation}`);
+                    utterance.voice = window.ukVoice || googleVoice;
+                    speechSynthesis.speak(utterance);
+                }
             } else if (e.key === 'Enter') {
                 search();
             }
@@ -683,7 +683,7 @@
 
                 // Get column labels from cols array which contains the actual headers (skip first column)
                 const headers = jsonData.table.cols.slice(1).map(col => col.label || '');
-                
+
                 // Map the data rows (skip first column)
                 fileData = jsonData.table.rows.map(row =>
                     row.c.slice(1).map(cell => cell ? cell.v : '')
