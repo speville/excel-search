@@ -461,8 +461,8 @@
                 }
             } else if (e.key === 'Enter') {
                 search();
-            } else if (e.key === ',' && (e.ctrlKey || e.metaKey)) {
-                // Handle Cmd+Backspace (or Ctrl+Backspace) to clear input
+            } else if (e.key === ',') {
+                // Clear the search input when comma is pressed
                 this.value = '';
                 lastValue = '';
                 clearSpeech();
